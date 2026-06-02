@@ -1,9 +1,9 @@
 """
-# ⛵ THE FLUTTERING SAIL: 8D EPISTEMIC ENGINE (v1.4)
+# ⛵ THE FLUTTERING SAIL: 8D EPISTEMIC ENGINE (v1.5)
 # Project: DeScideratum 
 
 ## ARCHITECTURAL INTENT:
-1. CONTEXT VISIBILITY: Restores the central display of the text being analyzed.
+1. UNIVERSAL CONTEXT DISPLAY: Ensures 'user_text' is visible for both Custom and Preloaded inputs.
 2. DUAL-MODE VISUALIZATION: Maintains 'Stereo Radar' and 'Synthesis Canvas' toggles.
 3. SELF-BOOTSTRAP: Auto-initializes SQLite for persistent token management.
 """
@@ -62,7 +62,6 @@ def evaluate_text(text):
 
 def draw_radar(vectors, titles, colors, is_merged=False):
     fig = go.Figure()
-    # Axis labels based on view mode
     theta_labels = ["Utility", "Fairness", "Power", "Mimetic"] if not is_merged else \
                    ["Utility", "Telos", "Structure", "Power", "Mimetic", "Dharma", "Consciousness", "Fairness"]
     
@@ -92,6 +91,7 @@ corpora_samples = {
     "Lexicon Bootstrap (Seed List)": " ".join(SEEDS.keys())
 }
 
+# Unified user_text capture logic
 if input_mode == "Preloaded Core Corpora":
     selected_corpus = st.sidebar.selectbox("Choose a preloaded document:", list(corpora_samples.keys()))
     user_text = corpora_samples[selected_corpus]
@@ -102,14 +102,14 @@ else:
 st.title("⛵ THE FLUTTERING SAIL")
 st.markdown("### *DeScideratum Primitive: Stereo Radar Diagnostic*")
 
-# 1. Restore the Corpus Display
+# The Universal Display: Visible for both modes
 with st.container():
     st.subheader("📝 Corpus Under Evaluation")
     st.info(user_text)
 
 st.divider()
 
-# 2. View Mode Toggle
+# View Mode Toggle
 view_mode = st.radio("Display Mode", ["Stereo Radar (De-Merged)", "Synthesis Canvas (Merged)"], horizontal=True)
 
 avg_vec, matches = evaluate_text(user_text)
@@ -122,7 +122,6 @@ if avg_vec is not None:
         with col2:
             st.plotly_chart(draw_radar([avg_vec[4:8]], ["Dharmic"], ["#1C83E1"]), use_container_width=True)
     else:
-        # Synthesis View (Superimposed)
         st.plotly_chart(draw_radar([avg_vec[0:4], avg_vec[4:8]], ["Materialist", "Dharmic"], ["#FF4B4B", "#1C83E1"], True), use_container_width=True)
     
     st.success(f"**Detected Anchor Tokens:** {', '.join(set(matches))}")
@@ -130,4 +129,4 @@ else:
     st.warning("No anchor tokens found in the current corpus.")
 
 st.divider()
-st.caption("DeScideratum Primitive v1.4 // Metadata: SQLite Powered // Literate Execution")
+st.caption("DeScideratum Primitive v1.5 // Metadata: SQLite Powered // Literate Execution")
