@@ -1,17 +1,11 @@
 """
-# ⛵ THE FLUTTERING SAIL: 8D EPISTEMIC ENGINE
+# ⛵ THE FLUTTERING SAIL: 8D EPISTEMIC ENGINE (v1.3)
 # Project: DeScideratum 
-# Version: 1.2 (Corrected & Database-Aware)
 
-## INTENT
-This script is the primary UI and logic coordinator. It performs three roles:
-1. TOKENIZATION: Scans text for anchor points.
-2. PERSISTENCE CHECK: Pulls 8D vectors from SQLite (Primary) or Tranche Master (Fallback).
-3. VISUALIZATION: Renders Stereo Radars to visualize metaphysical tension.
-
-## LITERATE UPDATES:
-- Fixed SyntaxError: Re-established full string literals for metrics.
-- Hybrid Data Access: Implemented a 'Try-DB-then-Dict' pattern for tokens.
+## ARCHITECTURAL INTENT:
+1. SELF-BOOTSTRAP: Auto-initializes SQLite if the lexicon is missing.
+2. DUAL-MODE VISUALIZATION: Toggles between 'Stereo Radar' and 'Synthesis Canvas'.
+3. CORPORA MANAGEMENT: Reintroduces the dropdown for the upcoming 'High Impact 100'.
 """
 
 import streamlit as st
@@ -23,131 +17,102 @@ import sqlite3
 import os
 from tranche_master import SEEDS
 
-# --- DATA ACCESS LAYER (LITERATE PATTERN) ---
+# --- 1. BOOTSTRAP LAYER (DATABASE AUTO-SEED) ---
+
+def bootstrap_db():
+    """Initializes the database automatically if not present on the server."""
+    db_path = "epistemic_lexicon.db"
+    if not os.path.exists(db_path):
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS lexicon 
+                          (word TEXT PRIMARY KEY, u REAL, f REAL, p REAL, m REAL, 
+                           t REAL, s REAL, d REAL, c REAL, source TEXT)''')
+        for word, vec in SEEDS.items():
+            cursor.execute("INSERT OR REPLACE INTO lexicon VALUES (?,?,?,?,?,?,?,?,?,?)", 
+                           (word, *vec, "Initial Seed Core"))
+        conn.commit()
+        conn.close()
+
+bootstrap_db()
+
+# --- 2. COMPUTATIONAL ENGINE ---
 
 def get_token_vector(word):
-    """
-    Attempts to fetch vector from SQLite database. 
-    Falls back to static dictionary if DB is missing or token is not found.
-    """
-    db_path = "epistemic_lexicon.db"
-    
-    # 1. Attempt SQLite Lookup
-    if os.path.exists(db_path):
-        try:
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute("SELECT u, f, p, m, t, s, d, c FROM lexicon WHERE word = ?", (word.lower(),))
-            result = cursor.fetchone()
-            conn.close()
-            if result:
-                return np.array(result)
-        except Exception:
-            pass # Silent fallback to dictionary
-            
-    # 2. Dictionary Fallback
-    if word.lower() in SEEDS:
-        return np.array(SEEDS[word.lower()])
-        
-    return None
+    conn = sqlite3.connect("epistemic_lexicon.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT u, f, p, m, t, s, d, c FROM lexicon WHERE word = ?", (word.lower(),))
+    result = cursor.fetchone()
+    conn.close()
+    return np.array(result) if result else None
 
 def evaluate_text(text):
-    """
-    Parses input text and calculates the 8D mean vector using hybrid lookup.
-    """
     clean_text = re.sub(r'[^\w\s]', '', text.lower())
     tokens = clean_text.split()
-    
     cumulative_vector = np.zeros(8)
-    matched_tokens = []
-    
+    matches = []
     for token in tokens:
         vec = get_token_vector(token)
         if vec is not None:
-            matched_tokens.append(token)
+            matches.append(token)
             cumulative_vector += vec
-            
-    if not matched_tokens:
-        return None, []
-        
-    return (cumulative_vector / len(matched_tokens)), matched_tokens
+    if not matches: return None, []
+    return (cumulative_vector / len(matches)), matches
 
-# --- VISUALIZATION LAYER ---
+# --- 3. VISUALIZATION ENGINE ---
 
-def create_stereo_radar(vector, dimensions, title, color):
-    """
-    Generates the 'Fluttering Sail' style Plotly Radar chart.
-    """
+def draw_radar(vectors, titles, colors, is_merged=False):
+    """Handles both Stereo (individual) and Synthesis (superimposed) views."""
     fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(
-        r=vector,
-        theta=dimensions,
-        fill='toself',
-        name=title,
-        line_color=color,
-        fillcolor=color,
-        opacity=0.4
-    ))
+    for vec, title, color in zip(vectors, titles, colors):
+        fig.add_trace(go.Scatterpolar(
+            r=vec, theta=["Utility", "Fairness", "Power", "Mimetic"] if not is_merged else 
+                        ["Utility", "Telos", "Structure", "Power", "Mimetic", "Dharma", "Consciousness", "Fairness"],
+            fill='toself', name=title, line_color=color, opacity=0.4
+        ))
     fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0, 1], gridcolor="rgba(255,255,255,0.1)"),
-            angularaxis=dict(gridcolor="rgba(255,255,255,0.1)", tickfont=dict(size=12))
-        ),
-        showlegend=False,
-        title=dict(text=title, font=dict(size=16, color=color)),
-        template="plotly_dark",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=40, r=40, t=60, b=40)
+        polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+        template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'
     )
     return fig
 
-# --- STREAMLIT UI EXECUTION ---
+# --- 4. UI CONFIGURATION ---
 
-st.set_page_config(page_title="The Fluttering Sail Engine", layout="wide")
+st.set_page_config(page_title="The Fluttering Sail", layout="wide")
+st.sidebar.title("Engine Configuration")
 
-st.title("⛵ THE FLUTTERING SAIL")
-st.markdown("### *DeScideratum Primitive: Stereo Radar Diagnostic*")
-st.divider()
+# Input Mode Toggle
+input_mode = st.sidebar.radio("Input Source", ["Custom Text Entry", "Preloaded Core Corpora"])
 
-# Sidebar Setup
-SAMPLES = {
-    "Corporate Baconian": "We must execute a strategy to leverage systemic throughput and optimize asset scale.",
-    "Classical Dharmic": "Our alignment with natural rhythm and duty preserves communal wholeness and sacrifice."
+# Corpora Library (Expansion Placeholder)
+corpora_samples = {
+    "Baconian Strategy (Modern)": "Execute strategy to leverage throughput and optimize asset scale.",
+    "Dharmic Fragment (Classical)": "Alignment with natural rhythm and duty preserves communal wholeness.",
+    "The 500-Token Seed List": " ".join(SEEDS.keys())
 }
-user_text = st.sidebar.text_area("Analysis Target:", value=SAMPLES["Corporate Baconian"], height=200)
+
+if input_mode == "Preloaded Core Corpora":
+    selected_corpus = st.sidebar.selectbox("Choose a preloaded document:", list(corpora_samples.keys()))
+    user_text = corpora_samples[selected_corpus]
+else:
+    user_text = st.sidebar.text_area("Paste Corpus Segment here:", height=200)
+
+# Dashboard State
+view_mode = st.radio("Display Mode", ["Stereo Radar (De-Merged)", "Synthesis Canvas (Merged)"], horizontal=True)
 
 avg_vec, matches = evaluate_text(user_text)
 
 if avg_vec is not None:
-    # 8D -> 4D/4D Split
-    lens1_vec = avg_vec[0:4]
-    lens1_dims = ["Utility", "Fairness", "Power", "Mimetic"]
+    if view_mode == "Stereo Radar (De-Merged)":
+        col1, col2 = st.columns(2)
+        with col1:
+            st.plotly_chart(draw_radar([avg_vec[0:4]], ["Materialist"], ["#FF4B4B"]), use_container_width=True)
+        with col2:
+            st.plotly_chart(draw_radar([avg_vec[4:8]], ["Dharmic"], ["#1C83E1"]), use_container_width=True)
+    else:
+        # Merged View (Superimposed)
+        st.plotly_chart(draw_radar([avg_vec[0:4], avg_vec[4:8]], ["Materialist", "Dharmic"], ["#FF4B4B", "#1C83E1"], True), use_container_width=True)
     
-    lens2_vec = avg_vec[4:8]
-    lens2_dims = ["Telos", "Structure", "Dharma", "Consciousness"]
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.plotly_chart(create_stereo_radar(lens1_vec, lens1_dims, "LENS_01: MATERIALIST", "#FF4B4B"), use_container_width=True)
-    with col2:
-        st.plotly_chart(create_stereo_radar(lens2_vec, lens2_dims, "LENS_02: DHARMIC", "#1C83E1"), use_container_width=True)
-
-    # Metrics Section (Fixed from previous SyntaxError)
-    st.divider()
-    m_axis = np.mean(np.abs(lens1_vec))
-    d_axis = np.mean(np.abs(lens2_vec))
-    shear = abs(m_axis - d_axis)
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Materialist Intensity (M)", f"{m_axis:.2f}")
-    m2.metric("Dharmic Resonance (D)", f"{d_axis:.2f}")
-    m3.metric("Shear Tension", f"{shear:.2f}")
-
-    with st.expander("Identified Anchor Tokens"):
-        st.write(f"Tokens found: {', '.join(set(matches))}")
+    st.info(f"Detected Anchor Tokens: {', '.join(set(matches))}")
 else:
-    st.warning("Awaiting anchor tokens...")
-
-st.divider()
-st.caption("DeScideratum Primitive v1.2 // Open-Source Metaphysical Alignment")
+    st.warning("No anchor tokens found.")
