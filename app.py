@@ -89,8 +89,8 @@ def get_intensity_label(score):
 
 def generate_philosophical_narration(vector):
     dimensions = ["Utility", "Fairness", "Power", "Mimetic", "Telos", "Structure", "Dharma", "Consciousness"]
-    mat_insights = []
-    dha_insights = []
+    mat_sentences = []  # Renamed to match the return statement
+    dha_sentences = []  # Renamed to match the return statement
     
     for idx, dim in enumerate(dimensions):
         score = vector[idx]
@@ -103,10 +103,11 @@ def generate_philosophical_narration(vector):
         narrative_sentence = f"Exhibits a **{intensity}** ({score:.2f}) alignment with **{mapping['thinker'] if mapping['thinker'] else mapping['school']}** ({mapping['school']}), indicating a clear pattern of {mapping['desc']}"
         
         if idx < 4:
-            mat_insights.append(narrative_sentence)
+            mat_sentences.append(narrative_sentence)
         else:
-            dha_insights.append(narrative_sentence)
+            dha_sentences.append(narrative_sentence)
             
+    # Nyaya Meta-Check: Standard Deviation < 0.15 indicates a "balanced" or "harmonized" system
     nyaya_triggered = np.std(vector) < 0.15 and np.mean(vector) > 0.4
     return mat_sentences, dha_sentences, nyaya_triggered
 
