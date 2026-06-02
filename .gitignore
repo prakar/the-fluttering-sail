@@ -1,6 +1,6 @@
 # === 1. LINGUISTIC ENGINE & DATABASE ARTIFACTS ===
 # Ignore local SQLite databases (the compiled 500-token lexicon assets)
-*.db
+# *.db -- temporarily allow so that the seed database is seen and backed up from render
 *.sqlite
 *.sqlite3
 *.sqlite3-journal
