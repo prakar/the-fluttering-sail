@@ -1,0 +1,18 @@
+{
+  "INTENSITY_SCALE": [
+    {"threshold": 0.7, "label": "Dominant"},
+    {"threshold": 0.4, "label": "Significant"},
+    {"threshold": 0.2, "label": "Emergent"},
+    {"threshold": 0.0, "label": "Vestigial"}
+  ],
+  "LINEAGE_MAP": {
+    "u": {"label": "Utility", "lineage": "Bentham / Mill"},
+    "f": {"label": "Fairness", "lineage": "John Rawls"},
+    "p": {"label": "Power", "lineage": "Machiavelli / Thucydides"},
+    "m": {"label": "Mimetic", "lineage": "René Girard"},
+    "t": {"label": "Telos", "lineage": "Aristotle / Aquinas"},
+    "s": {"label": "Structure", "lineage": "Immanuel Kant"},
+    "d": {"label": "Dharma", "lineage": "Vedic Orthodoxy / Gita"},
+    "c": {"label": "Consciousness", "lineage": "Advaita / Phenomenology"}
+  }
+}

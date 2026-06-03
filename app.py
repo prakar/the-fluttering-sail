@@ -1,9 +1,9 @@
 """
-# ⛵ THE FLUTTERING SAIL: LITERATE UI & ACADEMIC WORKBENCH (v2.4)
+# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v2.6)
 # 
-# PHILOSOPHY: This module serves as the 'Observational Deck'. Its primary duty
-# is to maintain a stateful bridge between the SQLite vector store and the 
-# visual radar topology. It prioritizes data integrity and clear audit trails.
+# LITERATE DESIGN: This module acts as the 'Synthesizer'. It pulls data from 
+# the Lexicon (SQLite), the Blueprint (JSON), and the Schema (JSON) 
+# to create a comprehensive, multi-modal analysis of ethics.
 """
 
 import streamlit as st
@@ -14,9 +14,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import logging
 
-# --- 1. THE AUDIT INFRASTRUCTURE ---
-# We treat logging as a first-class citizen to ensure every UI interaction 
-# and database query is traceable for academic verification.
+# --- 1. AUDIT & ASSET INITIALIZATION ---
 LOG_FILE = "framework.log"
 DB_NAME = "epistemic_lexicon.db"
 
@@ -27,90 +25,99 @@ logging.basicConfig(
 )
 
 def load_json_asset(filename):
-    """Safely ingests JSON assets with robust error trapping for missing files."""
+    """Safely ingests structural assets with error trapping and logging."""
     try:
         if os.path.exists(filename):
             with open(filename, 'r') as f:
-                logging.info(f"Asset Ingested: {filename}")
                 return json.load(f)
-        logging.warning(f"Expected asset {filename} not found. Utilizing empty state.")
     except Exception as e:
-        logging.error(f"Critical failure reading {filename}: {e}")
+        logging.error(f"Asset Load Failure ({filename}): {e}")
     return {}
 
-# --- 2. ASSET INITIALIZATION ---
-# 'CORPORA' provides the text and taxonomy mapping.
-# 'PHILOSOPHICAL_MAP' provides the 8-dimensional axis definitions.
 CORPORA = load_json_asset("corpora.json")
-PHILOSOPHICAL_MAP = load_json_asset("taxonomy.json")
+SCHEMA = load_json_asset("epistemic_schema.json")
 
 st.set_page_config(page_title="The Fluttering Sail", layout="wide")
-
-# Navigation Bridge: Isolating execution (Main) from introspection (Under the Hood).
 page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Under the Hood"])
 
-# --- 3. PRIMARY ANALYSIS INTERFACE ---
+# --- 2. THE NARRATIVE ENGINE (Qualitative Synthesis) ---
+
+def generate_epistemic_narrative(avg_vec):
+    """
+    Translates raw 8D vectors into a qualitative philosophical profile.
+    This function is now 'Dial-Aware', meaning it reads thresholds and 
+    lineage mappings from the external epistemic_schema.json.
+    """
+    def get_intensity_label(val):
+        for entry in SCHEMA.get("INTENSITY_SCALE", []):
+            if val >= entry["threshold"]:
+                return entry["label"]
+        return "Unknown"
+
+    lineage_map = SCHEMA.get("LINEAGE_MAP", {})
+    narrative_results = []
+    
+    for key, val in avg_vec.items():
+        intensity = get_intensity_label(val)
+        # We only surface 'Significant' or 'Dominant' influences for the summary
+        if intensity in ["Significant", "Dominant"]:
+            meta = lineage_map.get(key, {"label": key, "lineage": "Unknown Source"})
+            narrative_results.append({
+                "label": meta["label"],
+                "intensity": intensity,
+                "lineage": meta["lineage"],
+                "score": val
+            })
+            
+    return narrative_results
+
+# --- 3. MAIN ANALYSIS PAGE ---
 if page == "Main Analysis":
     st.title("⛵ THE FLUTTERING SAIL")
-    st.markdown("---")
     
     with st.sidebar:
         st.header("Engine Configuration")
-        # We display the Popular Name (UI-friendly) but resolve to the Taxonomy (Model-friendly).
         selected_popular_name = st.selectbox("Select Benchmark Document", list(CORPORA.keys()))
         doc_data = CORPORA.get(selected_popular_name, {})
-        input_text = doc_data.get("text", "No text found.")
-        taxonomy_label = doc_data.get("taxonomy", "Unknown Paradigm")
-        logging.info(f"Observer context shifted to: {selected_popular_name}")
+        input_text = doc_data.get("text", "")
+        taxonomy_label = doc_data.get("taxonomy", "Unspecified")
 
-    # LITERATE DISPLAY: Explicitly defining the source and taxonomy hierarchy.
     st.subheader(f"📝 Corpus Under Evaluation is Sourced from {taxonomy_label}:")
-    st.markdown(f"**Document Identifier:** {selected_popular_name}")
-    st.info(input_text) # Full text rendering, no truncation.
+    st.info(input_text)
 
-    # --- 4. DIAGNOSTIC METRIC CALCULATION ---
-    # This block performs real-time intersections between the UI selection and the DB.
-    st.markdown("### 📊 Engine Diagnostics & Reproducibility Metrics")
+    # --- 4. DIAGNOSTICS & METRICS ---
+    st.markdown("### 📊 Engine Diagnostics")
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     
-    total_tokens = len(input_text.split()) if input_text else 0
-    unique_hits = 0
     df_vectors = pd.DataFrame()
-
+    vault_count = 0
     if os.path.exists(DB_NAME):
-        try:
-            conn = sqlite3.connect(DB_NAME)
-            # Sanitize input tokens for precise DB lookup matching
-            input_tokens = [w.lower().strip(".,!?;:\"()") for w in input_text.split()]
-            query = f"SELECT * FROM lexicon WHERE word IN ({','.join(['?']*len(input_tokens))})"
-            df_vectors = pd.read_sql_query(query, conn, params=input_tokens)
-            unique_hits = len(df_vectors)
-            
-            # Count total lexicon size for the Seed Vault metric
-            vault_count = pd.read_sql_query("SELECT count(*) as count FROM lexicon", conn).iloc[0]['count']
-            conn.close()
-        except Exception as e:
-            logging.error(f"Database intersection error: {e}")
-            vault_count = 0
+        conn = sqlite3.connect(DB_NAME)
+        input_tokens = [w.lower().strip(".,!?;:\"()") for w in input_text.split()]
+        query = f"SELECT * FROM lexicon WHERE word IN ({','.join(['?']*len(input_tokens))})"
+        df_vectors = pd.read_sql_query(query, conn, params=input_tokens)
+        
+        # Audit the full vault size
+        v_res = pd.read_sql_query("SELECT count(*) as count FROM lexicon", conn)
+        vault_count = v_res.iloc[0]['count']
+        conn.close()
 
+    total_tokens = len(input_text.split()) if input_text else 0
     m_col1.metric("Total Tokens Evaluated", total_tokens)
-    m_col2.metric("Unique Anchor Hits", unique_hits)
-    m_col3.metric("Lexical Hit Density", f"{(unique_hits/total_tokens)*100:.1f}%" if total_tokens > 0 else "0%")
+    m_col2.metric("Unique Anchor Hits", len(df_vectors))
+    m_col3.metric("Lexical Hit Density", f"{(len(df_vectors)/total_tokens)*100:.1f}%" if total_tokens > 0 else "0%")
     m_col4.metric("Active Seed Vault Volume", f"{vault_count} entries")
 
     st.markdown("---")
 
-    # --- 5. TOPOLOGICAL RADAR RENDERING ---
-    # Mapping the 8D space into two semantic lenses: Materialist and Dharmic.
-    st.markdown("### 🕸️ Multi-Polar Ethics Topology")
-    
+    # --- 5. TOPOLOGY & QUALITATIVE SYNTHESIS ---
     if not df_vectors.empty:
-        # Calculate the Mean Epistemic Center for the selection
+        # Calculate mean vectors across the 8 dimensions
         avg_vec = df_vectors[['u', 'f', 'p', 'm', 't', 's', 'd', 'c']].mean()
         
+        st.markdown("### 🕸️ Multi-Polar Ethics Topology")
         c_left, c_right = st.columns(2)
         
-        # LENS 01: The Materialist Perspective (U, F, P, M)
         with c_left:
             st.markdown("#### LENS_01: MATERIALIST")
             fig1 = go.Figure(data=go.Scatterpolar(
@@ -121,7 +128,6 @@ if page == "Main Analysis":
             fig1.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False)
             st.plotly_chart(fig1, use_container_width=True)
 
-        # LENS 02: The Dharmic Perspective (S, T, C, D)
         with c_right:
             st.markdown("#### LENS_02: DHARMIC")
             fig2 = go.Figure(data=go.Scatterpolar(
@@ -131,31 +137,39 @@ if page == "Main Analysis":
             ))
             fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False)
             st.plotly_chart(fig2, use_container_width=True)
+
+        # RESTORED FEATURE: THE QUALITATIVE NARRATIVE LAYER
+        st.markdown("### 🧩 Epistemic Synthesis")
+        st.write("Quantitative indicators translated through the current scientific schema:")
+        
+        narrative_data = generate_epistemic_narrative(avg_vec)
+        
+        if narrative_data:
+            narrative_cols = st.columns(2)
+            for i, item in enumerate(narrative_data):
+                with narrative_cols[i % 2]:
+                    st.success(f"**{item['intensity']} {item['label']} ({item['score']:.2f})**")
+                    st.caption(f"Conceptual Lineage: {item['lineage']}")
+        else:
+            st.write("*No dimensions currently meet the 'Significant' threshold for narrative synthesis.*")
             
-        logging.info("Vector topology successfully rendered.")
+        logging.info("Visual Topology and Narrative Synthesis successfully rendered.")
     else:
-        st.warning("Awaiting anchor hits to initialize topology. Ensure your lexicon is seeded.")
+        st.warning("Awaiting anchor hits to initialize the topology.")
 
 # --- 6. ADMINISTRATIVE UNDER THE HOOD ---
 elif page == "Under the Hood":
     st.title("🛠️ Administrative Inspectability")
-    st.markdown("Accessing the raw structural state of the framework.")
-    
     tab1, tab2 = st.tabs(["🗄️ SQLite Data Store", "📜 System Logs"])
-    
     with tab1:
         if os.path.exists(DB_NAME):
             conn = sqlite3.connect(DB_NAME)
             st.dataframe(pd.read_sql_query("SELECT * FROM lexicon", conn), use_container_width=True)
-            conn.close()
-            
             if st.button("⚠️ Purge Database"):
+                conn.close()
                 os.remove(DB_NAME)
-                st.success("Database purged.")
-                logging.warning("Manual purge executed.")
-        else:
-            st.warning("Database not found.")
-            
+                st.rerun()
+            conn.close()
     with tab2:
         if os.path.exists(LOG_FILE):
             with open(LOG_FILE, "r") as f:
