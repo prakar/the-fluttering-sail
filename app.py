@@ -150,16 +150,36 @@ if page == "Main Analysis":
         st.markdown("### 🕸️ Multi-Polar Ethics Topology")
         c_left, c_right = st.columns(2)
         
-        for col, lens_name, dims, color in zip([c_left, c_right], ["MATERIALIST", "DHARMIC"], 
-                                               [['f','p','m','u'], ['s','t','c','d']], ['#FF4136', '#0074D9']):
+        # --- CORRECTED RADAR PLOTTING LOGIC ---
+        # Plotting logic remains consistent with previous working version
+        # Colors converted to explicit RGBA to satisfy Plotly validator
+        lens_colors = {
+            "MATERIALIST": "rgba(255, 65, 54, 1)",      # Solid Red
+            "MATERIALIST_FILL": "rgba(255, 65, 54, 0.3)", # Transparent Red
+            "DHARMIC": "rgba(0, 116, 217, 1)",          # Solid Blue
+            "DHARMIC_FILL": "rgba(0, 116, 217, 0.3)"    # Transparent Blue
+        }
+
+        for col, lens_name, dims in zip([c_left, c_right], ["MATERIALIST", "DHARMIC"], 
+                                               [['f','p','m','u'], ['s','t','c','d']]):
             with col:
                 st.markdown(f"#### LENS: {lens_name}")
+                
+                # Fetch color based on lens name
+                line_color = lens_colors[lens_name]
+                fill_color = lens_colors[f"{lens_name}_FILL"]
+
                 fig = go.Figure(data=go.Scatterpolar(
                     r=[avg_dict[d] for d in dims],
                     theta=[SCHEMA['LINEAGE_MAP'][d]['label'] for d in dims],
-                    fill='toself', fillcolor=f"{color}4D", line=dict(color=color)
+                    fill='toself', 
+                    fillcolor=fill_color, 
+                    line=dict(color=line_color)
                 ))
-                fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False)
+                fig.update_layout(
+                    polar=dict(radialaxis=dict(visible=True, range=[0, 1])), 
+                    showlegend=False
+                )
                 st.plotly_chart(fig, use_container_width=True)
 
         # --- SYSTEM ALERT TRIGGERS & NARRATION CONTAINER ---
