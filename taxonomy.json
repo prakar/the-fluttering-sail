@@ -1,0 +1,10 @@
+{
+  "Utility": {"school": "Utilitarianism (Consequentialism)", "thinker": "Jeremy Bentham", "desc": "maximizing transactional outcomes, utility, and systemic efficiency."},
+  "Fairness": {"school": "Deontological Ethics", "thinker": "John Rawls", "desc": "structural equity, rights, and fairness under a veil of ignorance."},
+  "Power": {"school": "Realpolitik / Conflict Theory", "thinker": "Machiavelli / Marx", "desc": "the consolidation of material leverage, systemic control, and competitive struggle."},
+  "Mimetic": {"school": "Mimetic Theory", "thinker": "René Girard", "desc": "the undercurrents of social imitation, competitive desire, and collective trends."},
+  "Telos": {"school": "Virtue Ethics / Yoga School", "thinker": "Aristotle", "desc": "the pursuit of a 'Final Cause', ultimate purpose, and practical self-realization."},
+  "Structure": {"school": "Vaisheshika / Structuralism", "thinker": "Kanada / Aquinas", "desc": "organizing reality into strict categories, atomic blocks, and structural hierarchies."},
+  "Dharma": {"school": "Purva Mimamsa", "thinker": "Jaimini", "desc": "unwavering adherence to cosmic ritual duty, scriptural rules, and linguistic execution."},
+  "Consciousness": {"school": "Advaita Vedanta / Sankhya", "thinker": "Shankara / Kapila", "desc": "the absolute primacy of pure subjective awareness and the field of internal consciousness."}
+}

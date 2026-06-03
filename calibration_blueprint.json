@@ -1,0 +1,14 @@
+{
+  "ANCHOR_DISCOVERY_MANIFEST": {
+    "Fred Brooks (No Silver Bullet)": "software engineering, essence, accident, complexity",
+    "Rig Veda (Nasadiya Sukta)": "sat, asat, paradox, desire, adhyaksha, svadha, primordial water",
+    "Chanakya (Arthashastra)": "danda, statecraft, strategy, alignment, duty",
+    "Adam Smith (Wealth of Nations)": "commodity, labor, market, capital, profit"
+  },
+  "THEMATIC_ALIGNMENT_MAP": {
+    "asat_sat": ["sat", "asat", "existence", "non-existence", "being"],
+    "kama_manas": ["kama", "desire", "seed of mind", "manas"],
+    "svadha_prayati": ["svadha", "creative energy", "vital force", "prayati"],
+    "adhyaksha": ["adhyaksha", "overseer", "witness", "highest heaven"]
+  }
+}

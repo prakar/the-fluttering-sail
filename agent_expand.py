@@ -1,17 +1,6 @@
 """
-# ⛵ THE FLUTTERING SAIL: HYBRID MATRIX EXPANSION ENGINE
-# Project: A Dynamical Multi-Polar Ethics Framework
-# Academic Companion Pipeline // Methodology: Curated-Empirical Hybrid Merge
-
-## METHODOLOGICAL INTENT
-To eliminate arbitrary LLM drift while capturing real-world semantic context,
-this script executes a weighted fusion between an axiomatically calibrated 
-philosophical baseline (Curated Core) and an LLM's contextual extraction 
-(Empirical Core).
-
-## MATHEMATICAL SPECIFICATION
-For tokens intersecting both matrices: V_final = (W_c * V_c) + (W_e * V_e)
-For net-new empirical tokens: V_final = V_e * Damping_Factor
+# ⛵ THE FLUTTERING SAIL: HYBRID MATRIX EXPANSION ENGINE (v2.0)
+# Methodology: Curated-Empirical Hybrid Merge with Fully Externalized Epistemic Architecture
 """
 
 import sqlite3
@@ -22,64 +11,73 @@ import requests
 
 # --- 1. CONFIGURATION & HYPERPARAMETERS ---
 DB_NAME = "epistemic_lexicon.db"
+WEIGHTS_FILE = "weights.json"
+BLUEPRINT_FILE = "calibration_blueprint.json"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-# Run $ export OPENAI_API_KEY="actual_key" in console BEFORE running this scrpt
 
-WEIGHT_CURATED = 0.6   # Alpha: Framework anchoring weight
-WEIGHT_EMPIRICAL = 0.4 # Beta: Real-world contextual variance weight
-NEW_TOKEN_DAMPING = 0.9 # Boundary constraint for un-anchored tokens
+WEIGHT_CURATED = 0.6   # Alpha
+WEIGHT_EMPIRICAL = 0.4 # Beta
+NEW_TOKEN_DAMPING = 0.9 # Gamma boundary constraint
 
-# --- 2. CURATED CORE BASELINE (Axiomatic Seed Matrix) ---
-# Hardcoded subset representing the structural anchors discussed for blending
-CURATED_SEED_VAULT = {
-    "essence": [0.3, 0.0, 0.2, 0.0, 0.8, 0.9, 0.0, 0.4],
-    "accident": [0.6, 0.0, 0.1, 0.1, 0.1, 0.8, 0.0, 0.0],
-    "complexity": [0.2, 0.0, 0.4, 0.2, 0.3, 0.9, 0.1, 0.1],
-    "worship": [0.0, 0.4, 0.1, 0.3, 0.8, 0.3, 0.2, 0.9],
-    "freedom": [0.2, 0.8, 0.3, 0.1, 0.9, 0.2, 0.3, 0.8],
-    "justice": [0.2, 0.9, 0.4, 0.1, 0.8, 0.8, 0.8, 0.4],
-    "fraternity": [0.1, 0.8, 0.2, 0.6, 0.7, 0.5, 0.9, 0.5],
-    "danda": [0.6, 0.4, 0.9, 0.3, 0.5, 0.8, 0.8, 0.1],
-    "eudaimonia": [0.6, 0.6, 0.2, 0.3, 0.9, 0.5, 0.6, 0.7],
-    "desire": [0.5, 0.2, 0.5, 0.9, 0.5, 0.4, 0.3, 0.6],
-    "axiom": [0.5, 0.3, 0.3, 0.0, 0.7, 0.9, 0.4, 0.4],
-    "commodity": [0.9, 0.4, 0.5, 0.4, 0.3, 0.7, 0.2, 0.1]
-}
+# --- 2. DYNAMIC SPECIFICATION LOADING ---
+def load_external_specifications():
+    """Loads weights and external philological mappings from tracking JSON files."""
+    if not os.path.exists(WEIGHTS_FILE) or not os.path.exists(BLUEPRINT_FILE):
+        print(f"🛑 Critical Error: Ensure {WEIGHTS_FILE} and {BLUEPRINT_FILE} exist.")
+        return None, None, None, None
 
-# Targeted text corpora mapping for the live calibration
-CORPORA_PROMPTS = {
-    "Fred Brooks (No Silver Bullet)": "software engineering, essence, accident, complexity, conceptual conformity",
-    "Bertrand Russell (Humanism)": "worship, freedom, intellect, truth, indignation, logical resignation",
-    "Chanakya (Arthashastra)": "danda, amatya, kosha, vijigishu, statecraft, alignment, duty",
-    "Adam Smith (Wealth of Nations)": "commodity, labor, market, revenue, capital, profit, transaction"
-}
+    with open(WEIGHTS_FILE, 'r') as f:
+        w_data = json.load(f)
+    with open(BLUEPRINT_FILE, 'r') as f:
+        b_data = json.load(f)
 
-# --- 3. EMPIRICAL EXTRACTION LAYER (LLM Gateway) ---
+    return (
+        w_data.get("CURATED_SEED_VAULT", {}),
+        w_data.get("UNTRANSLATABLE_OPEN_WEIGHTS", {}),
+        b_data.get("ANCHOR_DISCOVERY_MANIFEST", {}),
+        b_data.get("THEMATIC_ALIGNMENT_MAP", {})
+    )
+
+# Unpack the modular external configurations
+res = load_external_specifications()
+if res[0] is not None:
+    CURATED_SEED_VAULT, UNTRANSLATABLE_OPEN_WEIGHTS, ANCHOR_DISCOVERY_MANIFEST, THEMATIC_ALIGNMENT_MAP = res
+else:
+    exit(1)
+
+# --- 3. THEMATIC LOOKUP ENGINE ---
+
+def resolve_anchor_weights(token_clean):
+    """
+    Evaluates tokens against the seed matrices, scanning the thematic mapping
+    layer to ensure Sanskrit equivalents match their translation fragments.
+    """
+    if token_clean in CURATED_SEED_VAULT:
+        return np.array(CURATED_SEED_VAULT[token_clean])
+        
+    # Search externalized structural translation alignments
+    for weight_key, alignments in THEMATIC_ALIGNMENT_MAP.items():
+        if any(alignment in token_clean for alignment in alignments):
+            print(f"🔱 Mapping Extracted Paradigm Variant: '{token_clean}' -> Open Weights Key: [{weight_key}]")
+            return np.array(UNTRANSLATABLE_OPEN_WEIGHTS[weight_key])
+            
+    return None
+
+# --- 4. EMPIRICAL EXTRACTION LAYER ---
 
 def fetch_empirical_vectors(author_context, keywords):
-    """
-    Queries OpenAI to harvest contextually grounded vectors from the source text.
-    """
+    if not OPENAI_API_KEY:
+        return {}
+        
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
     
     prompt = f"""
-    You are an advanced computational philologist working on a multi-polar ethics framework.
-    Analyze the text footprint of '{author_context}', specifically focusing on themes like: {keywords}.
-    
-    Extract exactly 20 high-density tokens frequently utilized or implied in this philosophy.
-    For EACH token, output an 8D vector [U, F, P, M, T, S, D, C] strictly bounded between -1.0 and 1.0.
-    
-    Lens Dimensions:
-    U: Utility, F: Fairness, P: Power, M: Mimetic (Materialist Axis)
-    T: Telos, S: Structure, D: Dharma, C: Consciousness (Dharmic Axis)
-    
-    Output your analysis strictly as raw valid JSON matching this schema, no prose:
-    {{
-        "token_word": [0.12, -0.45, 0.80, 0.23, 0.11, 0.90, -0.10, 0.05]
-    }}
+    Analyze the philosophy of '{author_context}'. Key themes: {keywords}.
+    If the text contains apophatic elements (negation-based structural paradoxes), emphasize Consciousness (C) and Telos (T).
+    Extract 20 tokens as JSON: {{ "token": [U, F, P, M, T, S, D, C] }}
     """
     
     data = {
@@ -91,81 +89,58 @@ def fetch_empirical_vectors(author_context, keywords):
     
     try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-        response_json = response.json()
-        raw_content = response_json['choices'][0]['message']['content']
-        return json.loads(raw_content)
+        return json.loads(response.json()['choices'][0]['message']['content'])
     except Exception as e:
-        print(f"❌ API extraction failed for {author_context}: {e}")
+        print(f"❌ API failure for context [{author_context}]: {e}")
         return {}
 
-# --- 4. HYBRID MERGE PIPELINE ---
+# --- 5. HYBRID MERGE PIPELINE ---
 
 def execute_hybrid_merge(author, empirical_data):
-    """
-    Executes the math blend between Curated Baseline and Empirical extraction.
-    """
     merged_vectors = {}
-    
     for token, empirical_vec in empirical_data.items():
         token_clean = token.strip().lower()
+        if len(empirical_vec) != 8: continue
         
-        # Verify vector shape integrity
-        if len(empirical_vec) != 8:
-            continue
-            
         empirical_arr = np.array(empirical_vec)
+        curated_arr = resolve_anchor_weights(token_clean)
         
-        if token_clean in CURATED_SEED_VAULT:
-            # INTERSECTING NODE: Execute Weighted Blending Equation
-            curated_arr = np.array(CURATED_SEED_VAULT[token_clean])
+        if curated_arr is not None:
+            # INTERSECTING NODE: Weighted Blending Equation
             blended_arr = (WEIGHT_CURATED * curated_arr) + (WEIGHT_EMPIRICAL * empirical_arr)
             merged_vectors[token_clean] = np.clip(blended_arr, -1.0, 1.0).tolist()
             print(f"🧬 Blended Intersection: '{token_clean}'")
         else:
             # DISJOINT NODE: New empirical entry discovered; apply boundary damping
-            damped_arr = empirical_arr * NEW_TOKEN_DAMPING
-            merged_vectors[token_clean] = np.clip(damped_arr, -1.0, 1.0).tolist()
-            print(f"🌱 Damped Net-New Token: '{token_clean}'")
+            merged_vectors[token_clean] = (empirical_arr * NEW_TOKEN_DAMPING).tolist()
+            print(f"🌱 Damped Net-New: '{token_clean}'")
             
     return merged_vectors
 
-# --- 5. DATA PERSISTENCE LAYER ---
+# --- 6. DATA PERSISTENCE & RUNTIME ---
 
 def save_to_lexicon(merged_data, source_label):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS lexicon (
+            word TEXT PRIMARY KEY, u REAL, f REAL, p REAL, m REAL, t REAL, s REAL, d REAL, c REAL, source TEXT
+        )
+    """)
     for token, vec in merged_data.items():
-        try:
-            cursor.execute('''
-                INSERT OR REPLACE INTO lexicon (word, u, f, p, m, t, s, d, c, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (token, *vec, f"Hybrid Merge: {source_label}"))
-        except Exception as e:
-            print(f"Database write error for {token}: {e}")
-            
+        cursor.execute('INSERT OR REPLACE INTO lexicon VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (token, *vec, source_label))
     conn.commit()
     conn.close()
 
-# --- 6. EXECUTION RUNTIME ---
-
 if __name__ == "__main__":
-    if OPENAI_API_KEY == "YOUR_OPENAI_API_KEY_HERE":
-        print("🛑 Critical Error: Please inject your OpenAI API key to execute the calibration.")
+    if not OPENAI_API_KEY:
+        print("🛑 Missing OPENAI_API_KEY environment variable. Run 'export OPENAI_API_KEY=...' before executing.")
     else:
-        print("⛵ Starting Hybrid Epistemic Ingestion...")
-        
-        for author, keywords in CORPORA_PROMPTS.items():
-            print(f"\nTargeting Layer: {author}")
-            
-            # Step 1: Extract empirical vector array from live LLM context
+        print("⛵ Starting Hybrid Epistemic Ingestion Pipeline...")
+        for author, keywords in ANCHOR_DISCOVERY_MANIFEST.items():
+            print(f"\nProcessing Boundary Manifest Layer: {author}")
             empirical_payload = fetch_empirical_vectors(author, keywords)
-            
             if empirical_payload:
-                # Step 2: Run mathematical blend against seed definitions
                 final_matrix = execute_hybrid_merge(author, empirical_payload)
-                
-                # Step 3: Persist into active SQLite schema
                 save_to_lexicon(final_matrix, author)
-                
-        print("\n✓ Verification: Matrix expansion complete. Check active DB via app.py UI.")
+        print("\n✓ Verification: Matrix expansion complete. Operational database seeded.")
