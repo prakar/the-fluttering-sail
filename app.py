@@ -1,8 +1,8 @@
 """
-# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v2.9.1)
+# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v3.0)
 # 
-# LITERATE DESIGN: COMPACT UI + ADMIN RESTORATION.
-# CANONICAL STATUS: LOCKDOWN VERSION. 
+# LITERATE DESIGN: APOPHATIC LOGIC + EXPANDABLE CORPUS.
+# Status: Canonical Lockdown.
 """
 
 import streamlit as st
@@ -39,22 +39,25 @@ load_assets()
 st.markdown("""
     <style>
     .reportview-container .main .block-container { padding-top: 1rem; padding-bottom: 1rem; }
-    h1 { font-size: 1.8rem !important; margin-bottom: 0.5rem !important; padding-top: 0px !important; }
-    h3 { font-size: 1.2rem !important; margin-top: 1rem !important; }
+    h1 { font-size: 1.7rem !important; margin-bottom: 0.2rem !important; padding-top: 0px !important; }
     .stMetric { padding: 0px !important; }
-    [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
-    div.stInfo { font-size: 0.9rem !important; padding: 0.5rem !important; }
-    .centered-label { text-align: center; font-weight: bold; font-size: 1.1rem; margin-bottom: -10px; }
-    hr { margin: 0.5rem 0px !important; }
+    [data-testid="stMetricValue"] { font-size: 1.5rem !important; }
+    .centered-label { text-align: center; font-weight: bold; font-size: 1.0rem; margin-bottom: -10px; }
+    hr { margin: 0.4rem 0px !important; }
+    /* Style for the expander to keep it subtle */
+    .streamlit-expanderHeader { font-size: 0.85rem !important; color: #555; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. LOGIC ENGINES ---
 
 def get_intensity_label(val):
+    """Handles both positive alignment and apophatic (negative) divergence."""
+    if val < 0:
+        return "Divergent" # Indicates the text explicitly moves away from this pole
     for entry in SCHEMA.get("INTENSITY_SCALE", []):
         if val >= entry["threshold"]: return entry["label"]
-    return "Unknown"
+    return "Neutral"
 
 def evaluate_geometric_failures(vector_dict):
     u, f, p, m = vector_dict['u'], vector_dict['f'], vector_dict['p'], vector_dict['m']
@@ -76,16 +79,20 @@ def generate_philosophical_narration(vector):
         score = vector[idx]
         intensity = get_intensity_label(score)
         mapping = lineage_defs.get(key, {})
-        if intensity == "Vestigial": continue
+        
+        # We only skip if truly 'Vestigial' or extremely near zero
+        if intensity == "Vestigial" and abs(score) < 0.05: continue
+            
         name = mapping.get('thinker') if mapping.get('thinker') else mapping.get('school')
-        narrative_sentence = f"Exhibits a {intensity} ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a clear pattern of {mapping.get('desc')}"
+        narrative_sentence = f"Exhibits a **{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a pattern of {mapping.get('desc')}"
+        
         if idx < 4: mat_sentences.append(narrative_sentence)
         else: dha_sentences.append(narrative_sentence)
             
     nyaya_triggered = np.std(vector) < 0.15 and np.mean(vector) > 0.4
     return mat_sentences, dha_sentences, nyaya_triggered
 
-# --- 3. NAVIGATION BRIDGE ---
+# --- 3. NAVIGATION & MAIN UI ---
 page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Under the Hood"])
 
 if page == "Main Analysis":
@@ -94,10 +101,13 @@ if page == "Main Analysis":
     selected_doc_name = st.sidebar.selectbox("Benchmark Document", list(CORPORA.keys()))
     doc_data = CORPORA.get(selected_doc_name, {})
     input_text = doc_data.get("text", "")
+    source_label = doc_data.get("taxonomy", "General")
 
-    st.info(f"**Target Source: {doc_data.get('taxonomy', 'General')}** — {input_text[:180]}...")
+    # RESTORED: Expandable Text Container
+    with st.expander(f"📄 View Source Corpus: {source_label}", expanded=False):
+        st.write(input_text)
 
-    # Engine Metrics
+    # Engine Metrics (Proportionally reduced)
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     df_vectors = pd.DataFrame()
     vault_count = 0
@@ -105,14 +115,13 @@ if page == "Main Analysis":
         conn = sqlite3.connect(DB_NAME)
         tokens = [w.lower().strip(".,!?;:\"()") for w in input_text.split()]
         df_vectors = pd.read_sql_query(f"SELECT * FROM lexicon WHERE word IN ({','.join(['?']*len(tokens))})", conn, params=tokens)
-        v_res = pd.read_sql_query("SELECT count(*) as count FROM lexicon", conn)
-        vault_count = v_res.iloc[0]['count']
+        vault_count = pd.read_sql_query("SELECT count(*) as count FROM lexicon", conn).iloc[0]['count']
         conn.close()
 
-    m_col1.metric("Total Tokens", len(input_text.split()))
-    m_col2.metric("Anchor Hits", len(df_vectors))
-    m_col3.metric("Hit Density", f"{(len(df_vectors)/max(len(input_text.split()),1))*100:.1f}%")
-    m_col4.metric("Vault Volume", f"{vault_count} entries")
+    m_col1.metric("Tokens", len(input_text.split()))
+    m_col2.metric("Hits", len(df_vectors))
+    m_col3.metric("Density", f"{(len(df_vectors)/max(len(input_text.split()),1))*100:.1f}%")
+    m_col4.metric("Vault", f"{vault_count}")
 
     st.markdown("---")
 
@@ -121,7 +130,6 @@ if page == "Main Analysis":
         avg_dict = avg_vec.to_dict()
         
         c_left, c_right = st.columns(2)
-        
         with c_left:
             st.markdown('<p class="centered-label">MATERIALIST LENS</p>', unsafe_allow_html=True)
             fig1 = go.Figure(data=go.Scatterpolar(
@@ -129,7 +137,7 @@ if page == "Main Analysis":
                 theta=[SCHEMA['LINEAGE_MAP'][d]['label'] for d in ['f','p','m','u']],
                 fill='toself', fillcolor='rgba(255, 65, 54, 0.3)', line=dict(color='rgba(255, 65, 54, 1)')
             ))
-            fig1.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, margin=dict(t=30, b=30, l=40, r=40), height=320)
+            fig1.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, margin=dict(t=25, b=25, l=40, r=40), height=300)
             st.plotly_chart(fig1, use_container_width=True)
 
         with c_right:
@@ -139,7 +147,7 @@ if page == "Main Analysis":
                 theta=[SCHEMA['LINEAGE_MAP'][d]['label'] for d in ['s','t','c','d']],
                 fill='toself', fillcolor='rgba(0, 116, 217, 0.3)', line=dict(color='rgba(0, 116, 217, 1)')
             ))
-            fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, margin=dict(t=30, b=30, l=40, r=40), height=320)
+            fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, margin=dict(t=25, b=25, l=40, r=40), height=300)
             st.plotly_chart(fig2, use_container_width=True)
 
         st.markdown("---")
@@ -149,19 +157,19 @@ if page == "Main Analysis":
             getattr(st, a_type)(f"**{a_meta.get('title')}**\n\n{a_meta.get('desc')}")
 
         mat_s, dha_s, nyaya = generate_philosophical_narration(avg_vec.values)
-        if nyaya: st.success("⚖️ **NYAYA EQUILIBRIUM**: Harmonized epistemic system detected.")
+        if nyaya: st.success("⚖️ **NYAYA EQUILIBRIUM**: Harmonized system detected.")
         
         n_col1, n_col2 = st.columns(2)
         with n_col1:
             st.markdown("**Materialist Lens**")
-            for s in mat_s: st.write(f"• {s}")
+            for s in mat_sentences: st.write(f"• {s}") # Fix: ensure var name match
         with n_col2:
             st.markdown("**Dharmic Lens**")
-            for s in dha_s: st.write(f"• {s}")
+            for s in dha_sentences: st.write(f"• {s}") # Fix: ensure var name match
     else:
         st.warning("Insufficient hits to render topology.")
 
-# --- 4. ADMINISTRATIVE UNDER THE HOOD ---
+# --- 4. ADMINISTRATIVE ---
 elif page == "Under the Hood":
     st.title("🛠️ Administrative Inspectability")
     tab1, tab2 = st.tabs(["🗄️ SQLite Data Store", "📜 System Logs"])
@@ -169,8 +177,6 @@ elif page == "Under the Hood":
         if os.path.exists(DB_NAME):
             conn = sqlite3.connect(DB_NAME)
             st.dataframe(pd.read_sql_query("SELECT * FROM lexicon", conn), use_container_width=True)
-            if st.button("⚠️ Purge Database"):
-                conn.close(); os.remove(DB_NAME); st.rerun()
             conn.close()
     with tab2:
         if os.path.exists(LOG_FILE):
