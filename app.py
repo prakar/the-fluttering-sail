@@ -48,7 +48,6 @@ st.markdown("""
         margin-top: 20px;
         color: inherit;
     }
-    [data-testid="stPlotlyChart"] { margin-bottom: -50px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -64,49 +63,60 @@ def generate_philosophical_narration(vector):
     dim_keys = ['u', 'f', 'p', 'm', 't', 's', 'd', 'c']
     mat_sentences, dha_sentences = [], []
     lineage_defs = SCHEMA.get("LINEAGE_MAP", {}) 
+    vec_vals = [vector.get(k, 0) if isinstance(vector, dict) else vector[i] for i, k in enumerate(dim_keys)]
 
     for idx, key in enumerate(dim_keys):
-        score = vector[idx]
+        score = vec_vals[idx]
         intensity = get_intensity_label(score)
         mapping = lineage_defs.get(key, {})
-        
         if intensity == "Vestigial" and abs(score) < 0.05: continue
-            
         name = mapping.get('thinker') if mapping.get('thinker') else mapping.get('school')
-        narrative_sentence = f"Exhibits a **{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a pattern of {mapping.get('desc')}"
-        
-        if idx < 4: mat_sentences.append(narrative_sentence)
-        else: dha_sentences.append(narrative_sentence)
-            
-    nyaya_triggered = np.std(vector) < 0.15 and np.mean(vector) > 0.4
-    return mat_sentences, dha_sentences, nyaya_triggered
+        line = f"Exhibits a **{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a pattern of {mapping.get('desc')}"
+        if idx < 4: mat_sentences.append(line)
+        else: dha_sentences.append(line)
+    return mat_sentences, dha_sentences
 
-def generate_unified_synthesis(subject_name, vector_dict, source_context=""):
+def generate_llm_synthesis(corpus_title, avg_dict, source_text):
     api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key: return "⚠️ API Key missing."
+    if not api_key: return "⚠️ **Synthesis Unavailable**: API Key not found."
+    try:
+        # OPENAI PROXY FIX: Explicit httpx Client passing to prevent Render initialization errors
+        client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
+        prompt = f"Synthesize analysis for {corpus_title}. Metrics: {avg_dict}. Text: {source_text[:1200]}"
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "system", "content": "You are a philosophical synthesizer."},
+                      {"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        return f"#### 🤖 Synthesized Opinion from AI:\n\n{response.choices[0].message.content}"
+    except Exception as e: return f"⚠️ **Synthesis Error**: {str(e)}"
+
+def generate_semantic_reconstruction(word, vector_dict):
+    """PIVOT FEATURE: Quantization-driven contextual reconstruction to bust nontranslatability."""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key: return "⚠️ **Synthesis Unavailable**: API Key not found."
     
-    # CONCISE RULES: No fillers, < 50 words, grammar sacrificed for density
-    system_prompt = "Philosophical synthesizer. Rules: Extremely concise. No intros/outros. No filler. Sacrifice grammar for density. Max 50 words."
+    prompt = f"""
+    The Sanskrit word is: '{word}'. 
+    Its vector topology (weights) is: {vector_dict}.
     
-    user_prompt = f"Subject: {subject_name}. Weights: {vector_dict}. Context: {source_context[:500]}"
-    
+    Using these philosophical alignments, construct a synthesis passage that explains the 'nontranslatable' 
+    meaning of this word. Do not translate it into a single English word. 
+    Instead, triangulate its meaning using the specific thinkers and schools listed in its weights.
+    The goal is to build its meaning through context-rich philosophical friction.
+    """
     try:
         client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
         res = client.chat.completions.create(
             model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3,
-            max_tokens=100 # Safety cap to force cost savings
+            messages=[{"role": "system", "content": "You are a master of Sanskrit non-translatables and comparative philosophy."},
+                      {"role": "user", "content": prompt}],
+            temperature=0.3
         )
         return res.choices[0].message.content
     except Exception as e:
-        return f"⚠️ Error: {str(e)}"
-
-
-
+        return f"⚠️ **Reconstruction Engine Error**: {str(e)}"
 
 # --- 3. NAVIGATION BRIDGE ---
 page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Sanskrit Non-Translatables", "Under the Hood"])
@@ -117,6 +127,11 @@ if page == "Main Analysis":
 
     if 'synth_active' not in st.session_state: 
         st.session_state.synth_active = False
+    
+    btn_label = "🔓 De-Merge The Lenses" if st.session_state.synth_active else "🌪️ Synthesize (Overlay Lenses)"
+    if st.sidebar.button(btn_label):
+        st.session_state.synth_active = not st.session_state.synth_active
+        st.rerun()
 
     # PERSISTENT DOCUMENT SELECTION & SIDEBAR CUSTOM TEXT CONSTRAINTS
     doc_options = list(CORPORA.keys()) + ["Custom Text..."]
@@ -148,8 +163,7 @@ if page == "Main Analysis":
             fig_synth.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', name='Dharmic', line=dict(color='blue')))
             fig_synth.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), height=400)
             st.plotly_chart(fig_synth, use_container_width=True)
-            #st.markdown(generate_llm_synthesis(selected_doc, avg_dict, input_text))
-            st.markdown(f'<div class="synthesis-box">{generate_unified_synthesis(selected_doc, avg_dict, input_text)}</div>', unsafe_allow_html=True)
+            st.markdown(generate_llm_synthesis(selected_doc, avg_dict, input_text))
         else:
             # --- SPLIT GRAPH VIEW ---
             c1, c2 = st.columns(2)
@@ -159,11 +173,6 @@ if page == "Main Analysis":
             with c2:
                 st.markdown('<p class="centered-label">DHARMIC–ESSENTIALIST LENS</p>', unsafe_allow_html=True)
                 st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', fillcolor='rgba(0, 116, 217, 0.3)')), use_container_width=True)
-            
-            btn_label = "🔓 De-Merge The Lenses" if st.session_state.synth_active else "🌪️ Synthesize (Overlay Lenses)"
-            if st.sidebar.button(btn_label):
-                st.session_state.synth_active = not st.session_state.synth_active
-                st.rerun()    
             
             st.markdown("---")
             st.markdown("### 📜 Philosophical Lineage & Narration")
@@ -217,13 +226,13 @@ elif page == "Sanskrit Non-Translatables":
                 # --- NEW INTEGRATED SEMANTIC RECONSTRUCTION PASSAGE ---
                 st.markdown("### 🌪️ Semantic Reconstruction (The Nontranslatable Essence)")
                 with st.spinner(f"Triangulating meaning for {selected_term}..."):
-                    reconstruction = generate_unified_synthesis(selected_term, val_dict)
+                    reconstruction = generate_semantic_reconstruction(selected_term, val_dict)
                     st.markdown(f'<div class="synthesis-box">{reconstruction}</div>', unsafe_allow_html=True)
                 
-                #st.markdown("---")
-                #st.markdown("### 🧬 Dimensional Meaning")
-                #m_s, d_s = generate_philosophical_narration(vals)
-                #for s in m_s + d_s: st.write(f"• {s}")
+                st.markdown("---")
+                st.markdown("### 🧬 Dimensional Meaning")
+                m_s, d_s = generate_philosophical_narration(vals)
+                for s in m_s + d_s: st.write(f"• {s}")
 
 # --- 6. PAGE: UNDER THE HOOD (ADMIN VIEW) ---
 elif page == "Under the Hood":
