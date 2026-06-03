@@ -1,12 +1,42 @@
 {
-    "Software Essence": "With software systems, the fundamental complexity is an essential property...",
-    "Rational Humanism": "A Free Man's Worship requires that we acknowledge a world destitute...",
-    "Modern Deontology": "WE, THE PEOPLE OF INDIA, having solemnly resolved to constitute India...",
-    "Sacrificial Liberty": "Four score and seven years ago our fathers brought forth on this continent...",
-    "Political Realism": "The statecraft of a king relies entirely on Danda (punishment and law)...",
-    "Cosmic Mystery": "Then there was neither non-existence nor existence; there was no realm of air...",
-    "Virtue Ethics": "Eudaimonia (human flourishing) is an activity of the soul in accordance...",
-    "Mimetic Foundation": "Human desire is never authentic or direct; it is inherently mimetic...",
-    "Scientific Categories": "The mathematical principles of natural philosophy require clear axioms...",
-    "Economic Baseline": "Every individual endeavors to employ his capital so that its produce..."
+    "Fred Brooks (No Silver Bullet)": {
+        "taxonomy": "Software Essence",
+        "text": "With software systems, the fundamental complexity is an essential property, not an accidental one. Hence, descriptions of a software entity that abstract away its complexity often abstract away its essence. Software engineering is plagued by conformity to arbitrary interfaces, severe changeability, and complete invisibility. We create complex, conceptual abstractions that must map precisely to mathematical specifications without structural deviation."
+    },
+    "Bertrand Russell (A Free Man's Worship)": {
+        "taxonomy": "Rational Humanism",
+        "text": "A Free Man's Worship requires that we acknowledge a world destitute of ultimate purpose, yet refuse to bow our intellect to tyranny. True human freedom is born when we abandon indignation and replace it with a logical resignation to truth. Through reason and skepticism, humanity preserves morality and science. Ethical knowledge and rationality remain our only shields against absolute despair, demanding justice for the individual within an indifferent society."
+    },
+    "The Constitution of India": {
+        "taxonomy": "Modern Deontology",
+        "text": "WE, THE PEOPLE OF INDIA, having solemnly resolved to constitute India into a SOVEREIGN SOCIALIST SECULAR DEMOCRATIC REPUBLIC and to secure to all its citizens: JUSTICE, social, economic and political; LIBERTY of thought, expression, belief, faith and worship; EQUALITY of status and of opportunity; and to promote among them all FRATERNITY assuring the dignity of the individual and the unity and integrity of the Nation."
+    },
+    "Abraham Lincoln (Gettysburg Address)": {
+        "taxonomy": "Sacrificial Liberty",
+        "text": "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal. We cannot dedicate—we cannot consecrate—we cannot hallow—this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. We highly resolve that these dead shall not have died in vain—that this nation, under God, shall have a new birth of freedom."
+    },
+    "Chanakya (Arthashastra)": {
+        "taxonomy": "Political Realism",
+        "text": "The statecraft of a king relies entirely on Danda (punishment and law), which preserves the stability of the realm. The sovereign must secure his Kosha (treasury) and Amatya (ministers) while monitoring the moves of the Vijigishu (aspiring conqueror). Through strategic alliances (Sandhi) or deliberate conflict (Vigraha), a state enforces internal order and external balance, aligning material resources with the preservation of institutional duty."
+    },
+    "Rig Veda (Nasadiya Sukta)": {
+        "taxonomy": "Cosmic Mystery",
+        "text": "Then there was neither non-existence nor existence; there was no realm of air, no sky beyond it. Darkness was hidden by darkness in the beginning, with no distinguishing sign; all this was water. Desire (Kama) arose in the beginning, which was the first seed of mind. Svadha (creative energy) was below, and vital force was above. The Adhyaksha (overseer) in the highest heaven, he surely knows—or perhaps he knows not."
+    },
+    "Aristotle (Nicomachean Ethics)": {
+        "taxonomy": "Virtue Ethics",
+        "text": "Eudaimonia (human flourishing) is an activity of the soul in accordance with excellence or virtue (Arete). Practical wisdom (Phronesis) guides us to find the golden mean (Mesotes) between excess and deficiency. This habitual disposition (Hexis) defines our characteristic function (Ergon). Justice (Dikaiosyne) and philosophical wisdom protect the human intellect against the moral weakness of Akrasia."
+    },
+    "René Girard (I See Satan Fall Like Lightning)": {
+        "taxonomy": "Mimetic Foundation",
+        "text": "Human desire is never authentic or direct; it is inherently mimetic, copied entirely from a social model. This structural imitation generates inescapable rivalry, plunging communities into destabilizing crises of violence. To restore order, collective panic identifies a single scapegoat, whose sacrificial exclusion is viewed as sacred. All human myth, prohibition, and social structure are born to mask this foundational cycle of competitive contagion."
+    },
+    "Isaac Newton (Principia Mathematica)": {
+        "taxonomy": "Scientific Categories",
+        "text": "The mathematical principles of natural philosophy require clear axioms of motion. Every body perseveres in its state of rest or uniform motion unless compelled to change by forces impressed. Mass and acceleration dictate the structural framework of gravity. Absolute space and mathematical time exist independent of external observation, keeping the cosmic clockwork running in precise order."
+    },
+    "Adam Smith (Wealth of Nations)": {
+        "taxonomy": "Economic Baseline",
+        "text": "Every individual endeavors to employ his capital so that its produce may be of the greatest value. The market price of any specific commodity is regulated by the proportion between the quantity brought to market and effectual demand. Through commerce, division of labor, and investment of stock, revenue and profit are maximized. The transaction of wages and rent governs systemic progress through clear economic utility."
+    }
 }
