@@ -3,7 +3,9 @@
     "Fred Brooks (No Silver Bullet)": "software engineering, essence, accident, complexity",
     "Rig Veda (Nasadiya Sukta)": "sat, asat, paradox, desire, adhyaksha, svadha, primordial water",
     "Chanakya (Arthashastra)": "danda, statecraft, strategy, alignment, duty",
-    "Adam Smith (Wealth of Nations)": "commodity, labor, market, capital, profit"
+    "Adam Smith (Wealth of Nations)": "commodity, labor, market, capital, profit",
+    "Rajiv_Malhotra_Non_Translatables": "saguna, nirguna, atma, maya, jiva, kaivalya, om, shakti, prakriti, akasha, agni, vayu, shabda, indriya, loka, svarga, naraka, asura, devata, sukshma sharira, manas, buddhi, chitta, ahankara, ahimsa, prana, chakra, dhyana, samadhi, sadhana, puja, karma-yoga, jnana-yoga, bhakti-yoga, shastra, shruti, itihasa, purana, tantra, guna, samskara, hanuman, sanskriti, agma, naga, dasa, seva, guru, shraddha, kavya, kama, bhava, rasa, prema, leela, ananda, salila, tapas, abhu",
+    "Comparative_Cosmology_Parallels": "hyle, prime matter, telos, potency, actus purus, wuji, ziran, de, taiji, qi, tian, yin, yang, apophatic void"
   },
   "THEMATIC_ALIGNMENT_MAP": {
     "asat_sat": ["sat", "asat", "existence", "non-existence", "being"],
