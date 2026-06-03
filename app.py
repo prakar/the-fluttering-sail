@@ -84,31 +84,27 @@ def generate_unified_synthesis(subject_name, vector_dict, source_context=""):
     except Exception as e:
         return f"⚠️ Error: {str(e)}"
 
-def generate_semantic_reconstruction(word, vector_dict):
-    """PIVOT FEATURE: Quantization-driven contextual reconstruction to bust nontranslatability."""
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key: return "⚠️ **Synthesis Unavailable**: API Key not found."
-    
-    prompt = f"""
-    The Sanskrit word is: '{word}'. 
-    Its vector topology (weights) is: {vector_dict}.
-    
-    Using these philosophical alignments, construct a synthesis passage that explains the 'nontranslatable' 
-    meaning of this word. Do not translate it into a single English word. 
-    Instead, triangulate its meaning using the specific thinkers and schools listed in its weights.
-    The goal is to build its meaning through context-rich philosophical friction.
-    """
-    try:
-        client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "system", "content": "You are a master of Sanskrit non-translatables and comparative philosophy."},
-                      {"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-        return res.choices[0].message.content
-    except Exception as e:
-        return f"⚠️ **Reconstruction Engine Error**: {str(e)}"
+def generate_philosophical_narration(vector):
+    dim_keys = ['u', 'f', 'p', 'm', 't', 's', 'd', 'c']
+    mat_sentences, dha_sentences = [], []
+    lineage_defs = SCHEMA.get("LINEAGE_MAP", {}) 
+
+    for idx, key in enumerate(dim_keys):
+        score = vector[idx]
+        intensity = get_intensity_label(score)
+        mapping = lineage_defs.get(key, {})
+        
+        if intensity == "Vestigial" and abs(score) < 0.05: continue
+            
+        name = mapping.get('thinker') if mapping.get('thinker') else mapping.get('school')
+        narrative_sentence = f"Exhibits a **{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a pattern of {mapping.get('desc')}"
+        
+        if idx < 4: mat_sentences.append(narrative_sentence)
+        else: dha_sentences.append(narrative_sentence)
+            
+    nyaya_triggered = np.std(vector) < 0.15 and np.mean(vector) > 0.4
+    return mat_sentences, dha_sentences, nyaya_triggered
+
 
 # --- 3. NAVIGATION BRIDGE ---
 page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Sanskrit Non-Translatables", "Under the Hood"])
@@ -219,14 +215,13 @@ elif page == "Sanskrit Non-Translatables":
                 # --- NEW INTEGRATED SEMANTIC RECONSTRUCTION PASSAGE ---
                 st.markdown("### 🌪️ Semantic Reconstruction (The Nontranslatable Essence)")
                 with st.spinner(f"Triangulating meaning for {selected_term}..."):
-                    #reconstruction = generate_semantic_reconstruction(selected_term, val_dict)
                     reconstruction = generate_unified_synthesis(selected_term, val_dict)
                     st.markdown(f'<div class="synthesis-box">{reconstruction}</div>', unsafe_allow_html=True)
                 
-                st.markdown("---")
-                st.markdown("### 🧬 Dimensional Meaning")
-                m_s, d_s = generate_philosophical_narration(vals)
-                for s in m_s + d_s: st.write(f"• {s}")
+                #st.markdown("---")
+                #st.markdown("### 🧬 Dimensional Meaning")
+                #m_s, d_s = generate_philosophical_narration(vals)
+                #for s in m_s + d_s: st.write(f"• {s}")
 
 # --- 6. PAGE: UNDER THE HOOD (ADMIN VIEW) ---
 elif page == "Under the Hood":
