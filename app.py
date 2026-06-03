@@ -1,6 +1,3 @@
-# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v4.6)
-# FIXED: Pagination boundary logic to ensure all 69+ words are accessible.
-
 import streamlit as st
 import json
 import os
@@ -12,7 +9,7 @@ import logging
 import openai
 import httpx 
 
-# --- 1. GLOBAL APP CONFIGURATION ---
+# --- 1. GLOBAL APP CONFIGURATION & STATE ---
 st.set_page_config(
     page_title="The Fluttering Sail — Dynamical Multi-Polar Ethical Framework",
     page_icon="⛵",
@@ -33,7 +30,7 @@ def load_assets():
 
 load_assets()
 
-# --- CANONICAL CSS ---
+# --- CANONICAL STATE UI & CSS ---
 st.markdown("""
     <style>
     .reportview-container .main .block-container { padding-top: 1rem; padding-bottom: 1rem; }
@@ -41,11 +38,12 @@ st.markdown("""
     .stMetric { padding: 0px !important; }
     [data-testid="stMetricValue"] { font-size: 1.5rem !important; }
     .centered-label { text-align: center; font-weight: bold; font-size: 1.0rem; margin-bottom: -10px; }
+    .synthesis-box { background-color: #f0f2f6; padding: 20px; border-radius: 10px; border-left: 5px solid #9333ea; margin-top: 20px; }
     hr { margin: 0.4rem 0px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGIC ENGINES ---
+# --- 2. CORE LOGIC ENGINES ---
 
 def get_intensity_label(val):
     if val < 0: return "Divergent"
@@ -74,6 +72,7 @@ def generate_llm_synthesis(corpus_title, avg_dict, source_text):
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key: return "⚠️ **Synthesis Unavailable**: API Key not found."
     try:
+        # OPENAI PROXY FIX: Explicit httpx Client passing to prevent Render initialization errors
         client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
         prompt = f"Synthesize analysis for {corpus_title}. Metrics: {avg_dict}. Text: {source_text[:1200]}"
         response = client.chat.completions.create(
@@ -85,19 +84,48 @@ def generate_llm_synthesis(corpus_title, avg_dict, source_text):
         return f"#### 🤖 Synthesized Opinion from AI:\n\n{response.choices[0].message.content}"
     except Exception as e: return f"⚠️ **Synthesis Error**: {str(e)}"
 
+def generate_semantic_reconstruction(word, vector_dict):
+    """PIVOT FEATURE: Quantization-driven contextual reconstruction to bust nontranslatability."""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key: return "⚠️ **Synthesis Unavailable**: API Key not found."
+    
+    prompt = f"""
+    The Sanskrit word is: '{word}'. 
+    Its vector topology (weights) is: {vector_dict}.
+    
+    Using these philosophical alignments, construct a synthesis passage that explains the 'nontranslatable' 
+    meaning of this word. Do not translate it into a single English word. 
+    Instead, triangulate its meaning using the specific thinkers and schools listed in its weights.
+    The goal is to build its meaning through context-rich philosophical friction.
+    """
+    try:
+        client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
+        res = client.chat.com completions.create(
+            model="gpt-4o",
+            messages=[{"role": "system", "content": "You are a master of Sanskrit non-translatables and comparative philosophy."},
+                      {"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        return res.choices[0].message.content
+    except Exception as e:
+        return f"⚠️ **Reconstruction Engine Error**: {str(e)}"
+
 # --- 3. NAVIGATION BRIDGE ---
 page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Sanskrit Non-Translatables", "Under the Hood"])
 
+# --- 4. PAGE: MAIN ANALYSIS ---
 if page == "Main Analysis":
     st.title("⛵ THE FLUTTERING SAIL")
 
-    if 'synth_active' not in st.session_state: st.session_state.synth_active = False
+    if 'synth_active' not in st.session_state: 
+        st.session_state.synth_active = False
     
     btn_label = "🔓 De-Merge The Lenses" if st.session_state.synth_active else "🌪️ Synthesize (Overlay Lenses)"
     if st.sidebar.button(btn_label):
         st.session_state.synth_active = not st.session_state.synth_active
         st.rerun()
 
+    # PERSISTENT DOCUMENT SELECTION & SIDEBAR CUSTOM TEXT CONSTRAINTS
     doc_options = list(CORPORA.keys()) + ["Custom Text..."]
     selected_doc = st.sidebar.selectbox("Benchmark Document", doc_options, key="persistent_doc")
     
@@ -121,6 +149,7 @@ if page == "Main Analysis":
         avg_dict = avg_vec.to_dict()
         
         if st.session_state.synth_active:
+            # --- OVERLAY GRAPH VIEW ---
             fig_synth = go.Figure()
             fig_synth.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself', name='Materialist', line=dict(color='red')))
             fig_synth.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', name='Dharmic', line=dict(color='blue')))
@@ -128,6 +157,7 @@ if page == "Main Analysis":
             st.plotly_chart(fig_synth, use_container_width=True)
             st.markdown(generate_llm_synthesis(selected_doc, avg_dict, input_text))
         else:
+            # --- SPLIT GRAPH VIEW ---
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown('<p class="centered-label">MATERIALIST LENS</p>', unsafe_allow_html=True)
@@ -145,6 +175,7 @@ if page == "Main Analysis":
             with n2: 
                 for s in d_s: st.write(f"• {s}")
 
+# --- 5. PAGE: SANSKRIT NON-TRANSLATABLES CODEX ---
 elif page == "Sanskrit Non-Translatables":
     st.title("📜 Sanskrit Non-Translatables Codex")
     if os.path.exists("weights.json"):
@@ -154,51 +185,63 @@ elif page == "Sanskrit Non-Translatables":
         total_words = len(all_terms)
         words_per_page = 10
         
-        # Determine total pages
+        # FIXED PAGINATION BOUNDARY MATH
         total_pages = (total_words + words_per_page - 1) // words_per_page
-        
         if 'page_index' not in st.session_state: st.session_state.page_index = 0
         
         col_list, col_main = st.columns([1, 2])
         with col_list:
             start = st.session_state.page_index * words_per_page
             end = min(start + words_per_page, total_words)
-            
             selected_term = st.radio("Terms (Discovery List):", all_terms[start:end])
             
             p1, p2 = st.columns(2)
-            # FIXED: logic allows proceeding until the very last word
             if p1.button("⬅️ Back") and st.session_state.page_index > 0:
                 st.session_state.page_index -= 1
                 st.rerun()
             if p2.button("Next ➡️") and (st.session_state.page_index + 1) < total_pages:
                 st.session_state.page_index += 1
                 st.rerun()
-                
             st.caption(f"Page {st.session_state.page_index + 1} of {total_pages}")
 
         with col_main:
             if selected_term:
                 st.subheader(f"🎯 Vector Topology: {selected_term.upper()}")
                 vals = weights[selected_term]
+                val_dict = dict(zip(['u','f','p','m','t','s','d','c'], vals))
+                
+                # Codex Polar Visualization
                 f_codex = go.Figure(data=go.Scatterpolar(r=vals, theta=['u','f','p','m','t','s','d','c'], fill='toself', fillcolor='rgba(147,51,234,0.2)'))
                 f_codex.update_layout(polar=dict(radialaxis=dict(visible=True, range=[-1, 1])), height=400)
                 st.plotly_chart(f_codex, use_container_width=True)
+                
+                # --- NEW INTEGRATED SEMANTIC RECONSTRUCTION PASSAGE ---
+                st.markdown("### 🌪️ Semantic Reconstruction (The Nontranslatable Essence)")
+                with st.spinner(f"Triangulating meaning for {selected_term}..."):
+                    reconstruction = generate_semantic_reconstruction(selected_term, val_dict)
+                    st.markdown(f'<div class="synthesis-box">{reconstruction}</div>', unsafe_allow_html=True)
+                
+                st.markdown("---")
                 st.markdown("### 🧬 Dimensional Meaning")
                 m_s, d_s = generate_philosophical_narration(vals)
                 for s in m_s + d_s: st.write(f"• {s}")
 
+# --- 6. PAGE: UNDER THE HOOD (ADMIN VIEW) ---
 elif page == "Under the Hood":
     st.title("🛠️ Administrative Inspectability")
     tab1, tab2 = st.tabs(["🗄️ SQLite Data Store", "📜 System Logs"])
+    
     with tab1:
         if os.path.exists(DB_NAME):
             conn = sqlite3.connect(DB_NAME)
             st.dataframe(pd.read_sql_query("SELECT * FROM lexicon", conn), use_container_width=True)
             conn.close()
+        else:
+            st.warning(f"Database file '{DB_NAME}' not found.")
+            
     with tab2:
         if os.path.exists(LOG_FILE):
             with open(LOG_FILE, "r") as f:
                 st.code(f.read(), language="text")
         else:
-            st.info("System log file not found.")
+            st.info("System log file (framework.log) not found.")
