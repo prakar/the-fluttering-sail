@@ -1,10 +1,8 @@
 """
-# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v2.9)
+# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v2.9.1)
 # 
-# LITERATE DESIGN: COMPACT UI EDITION. 
-# Optimized for above-the-fold visibility and visual elegance.
-# 
-# CANONICAL STATUS: LOCKDOWN VERSION. NO FUNCTIONAL CHANGES.
+# LITERATE DESIGN: COMPACT UI + ADMIN RESTORATION.
+# CANONICAL STATUS: LOCKDOWN VERSION. 
 """
 
 import streamlit as st
@@ -16,8 +14,15 @@ import numpy as np
 import plotly.graph_objects as go
 import logging
 
-# --- 1. AUDIT & ASSETS ---
+# --- 1. GLOBAL APP CONFIGURATION ---
+st.set_page_config(
+    page_title="The Fluttering Sail — Dynamical Multi-Polar Ethical Framework",
+    page_icon="⛵",
+    layout="wide"
+)
+
 DB_NAME = "epistemic_lexicon.db"
+LOG_FILE = "framework.log"
 SCHEMA = {}
 CORPORA = {}
 
@@ -44,7 +49,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGIC ENGINES (Functionality Preserved) ---
+# --- 2. LOGIC ENGINES ---
 
 def get_intensity_label(val):
     for entry in SCHEMA.get("INTENSITY_SCALE", []):
@@ -73,7 +78,6 @@ def generate_philosophical_narration(vector):
         mapping = lineage_defs.get(key, {})
         if intensity == "Vestigial": continue
         name = mapping.get('thinker') if mapping.get('thinker') else mapping.get('school')
-        # Plain text version (no bolding on sentence body)
         narrative_sentence = f"Exhibits a {intensity} ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a clear pattern of {mapping.get('desc')}"
         if idx < 4: mat_sentences.append(narrative_sentence)
         else: dha_sentences.append(narrative_sentence)
@@ -81,82 +85,93 @@ def generate_philosophical_narration(vector):
     nyaya_triggered = np.std(vector) < 0.15 and np.mean(vector) > 0.4
     return mat_sentences, dha_sentences, nyaya_triggered
 
-# --- 3. UI RENDERING ---
+# --- 3. NAVIGATION BRIDGE ---
+page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Under the Hood"])
 
-st.title("⛵ THE FLUTTERING SAIL")
-
-# Sidebar Configuration
-selected_doc_name = st.sidebar.selectbox("Benchmark Document", list(CORPORA.keys()))
-doc_data = CORPORA.get(selected_doc_name, {})
-input_text = doc_data.get("text", "")
-
-st.info(f"**Target Source: {doc_data.get('taxonomy', 'General')}** — {input_text[:180]}...")
-
-# Engine Metrics
-m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-df_vectors = pd.DataFrame()
-vault_count = 0
-if os.path.exists(DB_NAME):
-    conn = sqlite3.connect(DB_NAME)
-    tokens = [w.lower().strip(".,!?;:\"()") for w in input_text.split()]
-    df_vectors = pd.read_sql_query(f"SELECT * FROM lexicon WHERE word IN ({','.join(['?']*len(tokens))})", conn, params=tokens)
-    v_res = pd.read_sql_query("SELECT count(*) as count FROM lexicon", conn)
-    vault_count = v_res.iloc[0]['count']
-    conn.close()
-
-m_col1.metric("Total Tokens", len(input_text.split()))
-m_col2.metric("Anchor Hits", len(df_vectors))
-m_col3.metric("Hit Density", f"{(len(df_vectors)/max(len(input_text.split()),1))*100:.1f}%")
-m_col4.metric("Vault Volume", f"{vault_count} entries")
-
-st.markdown("---")
-
-# Topology Layer
-if not df_vectors.empty:
-    avg_vec = df_vectors[['u', 'f', 'p', 'm', 't', 's', 'd', 'c']].mean()
-    avg_dict = avg_vec.to_dict()
+if page == "Main Analysis":
+    st.title("⛵ THE FLUTTERING SAIL")
     
-    c_left, c_right = st.columns(2)
-    
-    # Materialist Plot
-    with c_left:
-        st.markdown('<p class="centered-label">MATERIALIST LENS</p>', unsafe_allow_html=True)
-        fig1 = go.Figure(data=go.Scatterpolar(
-            r=[avg_dict[d] for d in ['f','p','m','u']],
-            theta=[SCHEMA['LINEAGE_MAP'][d]['label'] for d in ['f','p','m','u']],
-            fill='toself', fillcolor='rgba(255, 65, 54, 0.3)', line=dict(color='rgba(255, 65, 54, 1)')
-        ))
-        fig1.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, margin=dict(t=30, b=30, l=40, r=40), height=320)
-        st.plotly_chart(fig1, use_container_width=True)
+    selected_doc_name = st.sidebar.selectbox("Benchmark Document", list(CORPORA.keys()))
+    doc_data = CORPORA.get(selected_doc_name, {})
+    input_text = doc_data.get("text", "")
 
-    # Dharmic Plot
-    with c_right:
-        st.markdown('<p class="centered-label">DHARMIC LENS</p>', unsafe_allow_html=True)
-        fig2 = go.Figure(data=go.Scatterpolar(
-            r=[avg_dict[d] for d in ['s','t','c','d']],
-            theta=[SCHEMA['LINEAGE_MAP'][d]['label'] for d in ['s','t','c','d']],
-            fill='toself', fillcolor='rgba(0, 116, 217, 0.3)', line=dict(color='rgba(0, 116, 217, 1)')
-        ))
-        fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, margin=dict(t=30, b=30, l=40, r=40), height=320)
-        st.plotly_chart(fig2, use_container_width=True)
+    st.info(f"**Target Source: {doc_data.get('taxonomy', 'General')}** — {input_text[:180]}...")
 
-    # Narration & Failures
+    # Engine Metrics
+    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+    df_vectors = pd.DataFrame()
+    vault_count = 0
+    if os.path.exists(DB_NAME):
+        conn = sqlite3.connect(DB_NAME)
+        tokens = [w.lower().strip(".,!?;:\"()") for w in input_text.split()]
+        df_vectors = pd.read_sql_query(f"SELECT * FROM lexicon WHERE word IN ({','.join(['?']*len(tokens))})", conn, params=tokens)
+        v_res = pd.read_sql_query("SELECT count(*) as count FROM lexicon", conn)
+        vault_count = v_res.iloc[0]['count']
+        conn.close()
+
+    m_col1.metric("Total Tokens", len(input_text.split()))
+    m_col2.metric("Anchor Hits", len(df_vectors))
+    m_col3.metric("Hit Density", f"{(len(df_vectors)/max(len(input_text.split()),1))*100:.1f}%")
+    m_col4.metric("Vault Volume", f"{vault_count} entries")
+
     st.markdown("---")
-    st.markdown("### 📜 Philosophical Lineage & Narration")
-    
-    # Geometric Alerts
-    for a_type, a_meta in evaluate_geometric_failures(avg_dict):
-        getattr(st, a_type)(f"**{a_meta.get('title')}**\n\n{a_meta.get('desc')}")
 
-    mat_s, dha_s, nyaya = generate_philosophical_narration(avg_vec.values)
-    if nyaya: st.success("⚖️ **NYAYA EQUILIBRIUM**: Harmonized epistemic system detected.")
-    
-    n_col1, n_col2 = st.columns(2)
-    with n_col1:
-        st.markdown("**Materialist Lens**")
-        for s in mat_s: st.write(f"• {s}")
-    with n_col2:
-        st.markdown("**Dharmic Lens**")
-        for s in dha_s: st.write(f"• {s}")
-else:
-    st.warning("Insufficient hits to render topology.")
+    if not df_vectors.empty:
+        avg_vec = df_vectors[['u', 'f', 'p', 'm', 't', 's', 'd', 'c']].mean()
+        avg_dict = avg_vec.to_dict()
+        
+        c_left, c_right = st.columns(2)
+        
+        with c_left:
+            st.markdown('<p class="centered-label">MATERIALIST LENS</p>', unsafe_allow_html=True)
+            fig1 = go.Figure(data=go.Scatterpolar(
+                r=[avg_dict[d] for d in ['f','p','m','u']],
+                theta=[SCHEMA['LINEAGE_MAP'][d]['label'] for d in ['f','p','m','u']],
+                fill='toself', fillcolor='rgba(255, 65, 54, 0.3)', line=dict(color='rgba(255, 65, 54, 1)')
+            ))
+            fig1.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, margin=dict(t=30, b=30, l=40, r=40), height=320)
+            st.plotly_chart(fig1, use_container_width=True)
+
+        with c_right:
+            st.markdown('<p class="centered-label">DHARMIC LENS</p>', unsafe_allow_html=True)
+            fig2 = go.Figure(data=go.Scatterpolar(
+                r=[avg_dict[d] for d in ['s','t','c','d']],
+                theta=[SCHEMA['LINEAGE_MAP'][d]['label'] for d in ['s','t','c','d']],
+                fill='toself', fillcolor='rgba(0, 116, 217, 0.3)', line=dict(color='rgba(0, 116, 217, 1)')
+            ))
+            fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, margin=dict(t=30, b=30, l=40, r=40), height=320)
+            st.plotly_chart(fig2, use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("### 📜 Philosophical Lineage & Narration")
+        
+        for a_type, a_meta in evaluate_geometric_failures(avg_dict):
+            getattr(st, a_type)(f"**{a_meta.get('title')}**\n\n{a_meta.get('desc')}")
+
+        mat_s, dha_s, nyaya = generate_philosophical_narration(avg_vec.values)
+        if nyaya: st.success("⚖️ **NYAYA EQUILIBRIUM**: Harmonized epistemic system detected.")
+        
+        n_col1, n_col2 = st.columns(2)
+        with n_col1:
+            st.markdown("**Materialist Lens**")
+            for s in mat_s: st.write(f"• {s}")
+        with n_col2:
+            st.markdown("**Dharmic Lens**")
+            for s in dha_s: st.write(f"• {s}")
+    else:
+        st.warning("Insufficient hits to render topology.")
+
+# --- 4. ADMINISTRATIVE UNDER THE HOOD ---
+elif page == "Under the Hood":
+    st.title("🛠️ Administrative Inspectability")
+    tab1, tab2 = st.tabs(["🗄️ SQLite Data Store", "📜 System Logs"])
+    with tab1:
+        if os.path.exists(DB_NAME):
+            conn = sqlite3.connect(DB_NAME)
+            st.dataframe(pd.read_sql_query("SELECT * FROM lexicon", conn), use_container_width=True)
+            if st.button("⚠️ Purge Database"):
+                conn.close(); os.remove(DB_NAME); st.rerun()
+            conn.close()
+    with tab2:
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, "r") as f: st.code(f.read(), language="text")
