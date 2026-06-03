@@ -141,7 +141,7 @@ if page == "Main Analysis":
             st.plotly_chart(fig1, use_container_width=True)
 
         with c_right:
-            st.markdown('<p class="centered-label">DHARMIC LENS</p>', unsafe_allow_html=True)
+            st.markdown('<p class="centered-label">DHARMIC–ESSENTIALIST LENS</p>', unsafe_allow_html=True)
             fig2 = go.Figure(data=go.Scatterpolar(
                 r=[avg_dict[d] for d in ['s','t','c','d']],
                 theta=[SCHEMA['LINEAGE_MAP'][d]['label'] for d in ['s','t','c','d']],
@@ -162,10 +162,12 @@ if page == "Main Analysis":
         n_col1, n_col2 = st.columns(2)
         with n_col1:
             st.markdown("**Materialist Lens**")
-            for s in mat_sentences: st.write(f"• {s}") # Fix: ensure var name match
+            # Variable name fixed to match function return (mat_s)
+            for s in mat_s: st.write(f"• {s}") 
         with n_col2:
-            st.markdown("**Dharmic Lens**")
-            for s in dha_sentences: st.write(f"• {s}") # Fix: ensure var name match
+            st.markdown("**Dharmic–Essentialist Lens**")
+            # Variable name fixed to match function return (dha_s)
+            for s in dha_s: st.write(f"• {s}")
     else:
         st.warning("Insufficient hits to render topology.")
 
