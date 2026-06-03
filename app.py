@@ -1,7 +1,5 @@
-# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v4.0)
-# 
-# LITERATE DESIGN: APOPHATIC LOGIC + EXPANDABLE CORPUS + DYNAMIC SYNTHESIS.
-# Features: Sanskrit Codex, Custom Input, and LLM Synthesis.
+# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v4.2)
+# Refactored for Discovery-Based Pagination and Shared Philosophical Narratives.
 
 import streamlit as st
 import json
@@ -21,7 +19,6 @@ st.set_page_config(
 )
 
 DB_NAME = "epistemic_lexicon.db"
-LOG_FILE = "framework.log"
 SCHEMA = {}
 CORPORA = {}
 
@@ -34,45 +31,7 @@ def load_assets():
 
 load_assets()
 
-# --- CSS INJECTION ---
-st.markdown("""
-    <style>
-    .reportview-container .main .block-container { padding-top: 1rem; padding-bottom: 1rem; }
-    h1 { font-size: 1.7rem !important; margin-bottom: 0.2rem !important; padding-top: 0px !important; }
-    .stMetric { padding: 0px !important; }
-    [data-testid="stMetricValue"] { font-size: 1.5rem !important; }
-    .centered-label { text-align: center; font-weight: bold; font-size: 1.0rem; margin-bottom: -10px; }
-    hr { margin: 0.4rem 0px !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
 # --- 2. LOGIC ENGINES ---
-
-def generate_llm_synthesis(corpus_title, avg_dict, source_text):
-    """Live hook for opinionated synthesis using OpenAI."""
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        return "⚠️ **Synthesis Unavailable**: `OPENAI_API_KEY` not found in environment."
-
-    client = openai.OpenAI(api_key=api_key)
-    prompt = f"""
-    Synthesize an analysis of "{corpus_title}".
-    Passage: "{source_text[:1200]}"
-    METRICS: Materialist (u:{avg_dict['u']:.2f}, f:{avg_dict['f']:.2f}, p:{avg_dict['p']:.2f}, m:{avg_dict['m']:.2f}) 
-             Dharmic (t:{avg_dict['t']:.2f}, s:{avg_dict['s']:.2f}, d:{avg_dict['d']:.2f}, c:{avg_dict['c']:.2f})
-    TASK: Write a 2-paragraph "Synthesized Philosophical Narration". 
-    Juxtapose the lenses. Be wise, opinionated, and describe the 'shape' of thought without listing numbers.
-    """
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "system", "content": "You are an elite philosophical synthesizer."},
-                      {"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-        return f"#### 🤖 Synthesized Opinion from AI:\n\n{response.choices[0].message.content}"
-    except Exception as e:
-        return f"⚠️ **Synthesis Error**: {str(e)}"
 
 def get_intensity_label(val):
     if val < 0: return "Divergent"
@@ -81,127 +40,151 @@ def get_intensity_label(val):
     return "Neutral"
 
 def generate_philosophical_narration(vector):
+    """Shared narrative engine for both Main Analysis and Sanskrit Codex."""
     dim_keys = ['u', 'f', 'p', 'm', 't', 's', 'd', 'c']
     mat_sentences, dha_sentences = [], []
     lineage_defs = SCHEMA.get("LINEAGE_MAP", {}) 
+    
+    # Normalize input: handle both list/array and dictionary
+    vec_vals = [vector.get(k, 0) if isinstance(vector, dict) else vector[i] for i, k in enumerate(dim_keys)]
+
     for idx, key in enumerate(dim_keys):
-        score = vector[idx]
+        score = vec_vals[idx]
         intensity = get_intensity_label(score)
         mapping = lineage_defs.get(key, {})
         if intensity == "Vestigial" and abs(score) < 0.05: continue
         name = mapping.get('thinker') if mapping.get('thinker') else mapping.get('school')
-        narrative_sentence = f"Exhibits a **{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a pattern of {mapping.get('desc')}"
-        if idx < 4: mat_sentences.append(narrative_sentence)
-        else: dha_sentences.append(narrative_sentence)
-    return mat_sentences, dha_sentences, (np.std(vector) < 0.15 and np.mean(vector) > 0.4)
+        line = f"**{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')})"
+        
+        if idx < 4: mat_sentences.append(line)
+        else: dha_sentences.append(line)
+    
+    return mat_sentences, dha_sentences
 
-# --- 3. NAVIGATION & MAIN UI ---
+def generate_llm_synthesis(corpus_title, avg_dict, source_text):
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key: return "⚠️ API Key missing."
+    client = openai.OpenAI(api_key=api_key)
+    prompt = f"Synthesize analysis for {corpus_title}. Metrics: {avg_dict}. Text: {source_text[:1000]}"
+    try:
+        res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
+        return f"#### 🤖 Synthesized Opinion from AI:\n\n{res.choices[0].message.content}"
+    except Exception as e: return f"⚠️ Error: {str(e)}"
+
+# --- 3. NAVIGATION ---
 page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Sanskrit Non-Translatables", "Under the Hood"])
 
+# --- 4. MAIN ANALYSIS VIEW ---
 if page == "Main Analysis":
     st.title("⛵ THE FLUTTERING SAIL")
+
+    if 'synth_active' not in st.session_state: st.session_state.synth_active = False
     
-    # 3. SYNTHESIZE / DE-MERGE BUTTON LOGIC
-    is_synth = st.session_state.get('synth_active', False)
-    btn_label = "🔓 De-Merge The Lenses" if is_synth else "🌪️ Synthesize (Overlay Lenses)"
+    # Persistent State Toggle
+    btn_label = "🔓 De-Merge The Lenses" if st.session_state.synth_active else "🌪️ Synthesize (Overlay Lenses)"
     if st.sidebar.button(btn_label):
-        st.session_state['synth_active'] = not is_synth
+        st.session_state.synth_active = not st.session_state.synth_active
         st.rerun()
 
-    # 2. CUSTOM TEXT DROPDOWN LOGIC
-    doc_options = ["Custom Text..."] + list(CORPORA.keys())
-    selected_doc_name = st.sidebar.selectbox("Benchmark Document", doc_options)
+    doc_options = list(CORPORA.keys()) + ["Custom Text..."]
+    selected_doc = st.sidebar.selectbox("Benchmark Document", doc_options, key="doc_selection")
     
-    if selected_doc_name == "Custom Text...":
-        input_text = st.text_area("Input passage for ethical quantization:", height=200, placeholder="Paste text here and press Ctrl+Enter...")
-        source_label = "User Provided"
+    input_text = ""
+    if selected_doc == "Custom Text...":
+        input_text = st.sidebar.text_area("Input passage:", height=150)
     else:
-        doc_data = CORPORA.get(selected_doc_name, {})
-        input_text = doc_data.get("text", "")
-        source_label = doc_data.get("taxonomy", "General")
-        with st.expander(f"📄 View Source Corpus: {source_label}", expanded=False):
+        input_text = CORPORA.get(selected_doc, {}).get("text", "")
+        with st.expander("📄 View Source Corpus", expanded=False):
             st.write(input_text)
 
-    # Metrics Row
-    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     df_vectors = pd.DataFrame()
     if os.path.exists(DB_NAME) and input_text:
         conn = sqlite3.connect(DB_NAME)
         tokens = [w.lower().strip(".,!?;:\"()") for w in input_text.split()]
         df_vectors = pd.read_sql_query(f"SELECT * FROM lexicon WHERE word IN ({','.join(['?']*len(tokens))})", conn, params=tokens)
-        vault_count = pd.read_sql_query("SELECT count(*) as count FROM lexicon", conn).iloc[0]['count']
         conn.close()
-        
-        m_col1.metric("Tokens", len(input_text.split()))
-        m_col2.metric("Hits", len(df_vectors))
-        m_col3.metric("Density", f"{(len(df_vectors)/max(len(input_text.split()),1))*100:.1f}%")
-        m_col4.metric("Vault", f"{vault_count}")
-
-    st.markdown("---")
 
     if not df_vectors.empty:
         avg_vec = df_vectors[['u', 'f', 'p', 'm', 't', 's', 'd', 'c']].mean()
         avg_dict = avg_vec.to_dict()
         
-        if st.session_state.get('synth_active', False):
-            # --- SYNTHESIZED VIEW ---
-            st.markdown('<p class="centered-label">SYNTHESIZED PARADIGM OVERLAY</p>', unsafe_allow_html=True)
-            fig_synth = go.Figure()
-            fig_synth.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself', fillcolor='rgba(255, 65, 54, 0.2)', name='Materialist'))
-            fig_synth.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', fillcolor='rgba(0, 116, 217, 0.2)', name='Dharmic'))
-            fig_synth.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), height=400, margin=dict(t=30, b=30))
-            st.plotly_chart(fig_synth, use_container_width=True)
-            st.markdown("---")
-            with st.spinner("Synthesizing..."):
-                st.markdown(generate_llm_synthesis(selected_doc_name, avg_dict, input_text))
+        if st.session_state.synth_active:
+            fig = go.Figure()
+            fig.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself', name='Materialist', line=dict(color='red')))
+            fig.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', name='Dharmic', line=dict(color='blue')))
+            st.plotly_chart(fig, use_container_width=True)
+            st.markdown(generate_llm_synthesis(selected_doc, avg_dict, input_text))
         else:
-            # --- SPLIT VIEW ---
-            c_l, c_r = st.columns(2)
-            with c_l:
-                st.markdown('<p class="centered-label">MATERIALIST LENS</p>', unsafe_allow_html=True)
-                f1 = go.Figure(data=go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself', fillcolor='rgba(255, 65, 54, 0.3)'))
-                f1.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, height=300, margin=dict(t=25, b=25))
-                st.plotly_chart(f1, use_container_width=True)
-            with c_r:
-                st.markdown('<p class="centered-label">DHARMIC–ESSENTIALIST LENS</p>', unsafe_allow_html=True)
-                f2 = go.Figure(data=go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', fillcolor='rgba(0, 116, 217, 0.3)'))
-                f2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, height=300, margin=dict(t=25, b=25))
-                st.plotly_chart(f2, use_container_width=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself')), use_container_width=True)
+            with c2:
+                st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself')), use_container_width=True)
             
-            st.markdown("### 📜 Philosophical Lineage & Narration")
-            mat_s, dha_s, nyaya = generate_philosophical_narration(avg_vec.values)
+            mat_s, dha_s = generate_philosophical_narration(avg_vec.values)
             n1, n2 = st.columns(2)
             with n1: 
+                st.markdown("**Materialist Lens**")
                 for s in mat_s: st.write(f"• {s}")
             with n2: 
+                st.markdown("**Dharmic Lens**")
                 for s in dha_s: st.write(f"• {s}")
-    elif input_text:
-        st.warning("Insufficient hits to render topology.")
 
-# --- 1. SANSKRIT NON-TRANSLATABLES CODEX ROUTE ---
+# --- 5. SANSKRIT CODEX VIEW (Discovery & Pagination) ---
 elif page == "Sanskrit Non-Translatables":
     st.title("📜 Sanskrit Non-Translatables Codex")
+    
     if os.path.exists("weights.json"):
-        with open("weights.json", "r") as f: weights = json.load(f).get("SANSKRIT_NONTRANSLATABLES_OPEN_WEIGHTS", {})
-        col_ls, col_chart = st.columns([1, 2])
-        with col_ls:
-            term = st.radio("Select a term:", sorted(list(weights.keys())))
-        with col_chart:
-            st.subheader(f"🎯 Vector Topology: {term.upper()}")
-            vals = weights[term]
-            f_codex = go.Figure(data=go.Scatterpolar(r=vals, theta=['u','f','p','m','t','s','d','c'], fill='toself', fillcolor='rgba(147, 51, 234, 0.2)'))
-            f_codex.update_layout(polar=dict(radialaxis=dict(visible=True, range=[-1, 1])), height=400)
-            st.plotly_chart(f_codex, use_container_width=True)
-            st.write(f"**Fingerprint:** `{vals}`")
+        with open("weights.json", "r") as f: 
+            weights = json.load(f).get("SANSKRIT_NONTRANSLATABLES_OPEN_WEIGHTS", {})
+        
+        all_terms = sorted(list(weights.keys()))
+        total_words = len(all_terms)
+        words_per_page = 10
+        
+        # Pagination State Handling
+        if 'page_index' not in st.session_state: st.session_state.page_index = 0
+        
+        col_list, col_main = st.columns([1, 2])
+        
+        with col_list:
+            st.subheader("Discovery List")
+            start = st.session_state.page_index * words_per_page
+            end = start + words_per_page
+            current_batch = all_terms[start:end]
+            
+            # Selection within the current batch
+            selected_term = st.radio("Terms on this page:", current_batch, label_visibility="collapsed")
+            
+            # Pagination Controls
+            p_col1, p_col2 = st.columns(2)
+            if p_col1.button("⬅️ Back") and st.session_state.page_index > 0:
+                st.session_state.page_index -= 1
+                st.rerun()
+            if p_col2.button("Next ➡️") and end < total_words:
+                st.session_state.page_index += 1
+                st.rerun()
+                
+            st.caption(f"Page {st.session_state.page_index + 1} of {(total_words // words_per_page) + 1} ({total_words} total)")
+
+        with col_main:
+            if selected_term:
+                vals = weights[selected_term]
+                st.subheader(f"🎯 Vector Topology: {selected_term.upper()}")
+                
+                # Radar Plot
+                f_codex = go.Figure(data=go.Scatterpolar(r=vals, theta=['u','f','p','m','t','s','d','c'], fill='toself', fillcolor='rgba(147,51,234,0.2)'))
+                f_codex.update_layout(polar=dict(radialaxis=dict(visible=True, range=[-1, 1])), height=400)
+                st.plotly_chart(f_codex, use_container_width=True)
+                
+                # Shared Philosophical Narration logic applied here
+                st.markdown("### 🧬 Dimensional Meaning")
+                m_s, d_s = generate_philosophical_narration(vals)
+                for s in m_s + d_s: st.write(f"• {s}")
 
 elif page == "Under the Hood":
     st.title("🛠️ Administrative Inspectability")
-    tab1, tab2 = st.tabs(["🗄️ SQLite Data Store", "📜 System Logs"])
-    with tab1:
-        if os.path.exists(DB_NAME):
-            conn = sqlite3.connect(DB_NAME)
-            st.dataframe(pd.read_sql_query("SELECT * FROM lexicon", conn), use_container_width=True)
-            conn.close()
-    with tab2:
-        if os.path.exists(LOG_FILE):
-            with open(LOG_FILE, "r") as f: st.code(f.read(), language="text")
+    if os.path.exists(DB_NAME):
+        conn = sqlite3.connect(DB_NAME)
+        st.dataframe(pd.read_sql_query("SELECT * FROM lexicon", conn), use_container_width=True)
+        conn.close()
