@@ -40,6 +40,14 @@ st.markdown("""
     .centered-label { text-align: center; font-weight: bold; font-size: 1.0rem; margin-bottom: -10px; }
     .synthesis-box { background-color: #f0f2f6; padding: 20px; border-radius: 10px; border-left: 5px solid #9333ea; margin-top: 20px; }
     hr { margin: 0.4rem 0px !important; }
+    .synthesis-box { 
+        background-color: rgba(240, 242, 246, 0.1); 
+        padding: 20px; 
+        border-radius: 10px; 
+        border-left: 5px solid #9333ea; 
+        margin-top: 20px;
+        color: inherit;
+    }
     </style>
     """, unsafe_allow_html=True)
 
