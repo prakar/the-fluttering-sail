@@ -6,13 +6,31 @@
     {"threshold": 0.0, "label": "Vestigial"}
   ],
   "LINEAGE_MAP": {
-    "u": {"label": "Utility", "lineage": "Bentham / Mill"},
-    "f": {"label": "Fairness", "lineage": "John Rawls"},
-    "p": {"label": "Power", "lineage": "Machiavelli / Thucydides"},
-    "m": {"label": "Mimetic", "lineage": "René Girard"},
-    "t": {"label": "Telos", "lineage": "Aristotle / Aquinas"},
-    "s": {"label": "Structure", "lineage": "Immanuel Kant"},
-    "d": {"label": "Dharma", "lineage": "Vedic Orthodoxy / Gita"},
-    "c": {"label": "Consciousness", "lineage": "Advaita / Phenomenology"}
+    "u": {"label": "Utility", "thinker": "Jeremy Bentham", "school": "Consequentialism", "desc": "optimizing for aggregate outcomes and measurable social utility."},
+    "f": {"label": "Fairness", "thinker": "John Rawls", "school": "Justice as Fairness", "desc": "the structural integrity of justice and the 'veil of ignorance'."},
+    "p": {"label": "Power", "thinker": "Thucydides", "school": "Political Realism", "desc": "the pragmatic exercise of influence and statecraft."},
+    "m": {"label": "Mimetic", "thinker": "René Girard", "school": "Mimetic Theory", "desc": "the structural imitation of desire and its resulting social rivalry."},
+    "t": {"label": "Telos", "thought_label": "Substantial Form", "thinker": "Aristotle", "school": "Virtue Ethics", "desc": "the realization of a final cause or ultimate purpose in action."},
+    "s": {"label": "Structure", "thinker": "Immanuel Kant", "school": "Deontology", "desc": "the categorical imperative and the necessity of universal law."},
+    "d": {"label": "Dharma", "thinker": "The Gita", "school": "Vedic Orthodoxy", "desc": "duty-bound action aligned with the cosmic order (Rta)."},
+    "c": {"label": "Consciousness", "thinker": "Shankara", "school": "Advaita", "desc": "the non-dual awareness that underlies all phenomenal experience."}
+  },
+  "FAILURE_MODES": {
+    "baconian_collapse": {
+      "title": "🚨 Baconian Collapse (Hyper-Optimization / Utility Extraction)",
+      "desc": "This zone flags text where human agency, linguistic expression, or natural systems have been utterly reduced to modular, interchangeable pieces for a production pipeline. The language optimized here is entirely extraction-oriented (e.g., late-stage corporate restructuring manifestos, standard algorithmic RLHF safety guidelines). The system warns that the system described is optimizing its own throughput at the direct cost of its underlying ontological integrity (Goodhart Alert)."
+    },
+    "mimetic_shear": {
+      "title": "💥 Mimetic Shear (Power Dominance / Ontological Erasure)",
+      "desc": "This zone identifies text caught in a self-authenticating trap of existential conflict, competitive survival, or structural domination (Scapegoat Warning). The language actively erases the possibility of transcendent awareness or sacred duty, replacing them with a closed-loop game of defensive posture or aggressive optimization. This is typical of hyper-partisan propaganda, wartime mobilization decrees, and algorithmic engagement loops optimized for outrage."
+    },
+    "ascetic_drift": {
+      "title": "🪁 Ascetic Drift (Hyper-Transcendence / Civic Deficit)",
+      "desc": "This zone identifies text that has drifted entirely into the vertical axis of transcendent liberation (Moksha or pure witness observation) while abandoning the horizontal matrix of worldly realization (Artha, Kama, and civic Dharma). The system triggers an Abstraction Drift warning, notifying researchers that the corpus fails to provide an actionable framework for institutional execution or distributive justice."
+    },
+    "equilibrium_zone": {
+      "title": "⚖️ Equilibrium Zone (Holistic Synthesis / Purushartha Alignment)",
+      "desc": "The gold standard of the framework. This zone represents text that achieves a balanced integration of worldly efficiency and transcendent purpose (Purushartha Blueprint). It honors the rules of material governance, equity, and operational reality without sacrificing the essential, non-reducible nature of human and ecological systems. Epitomized by foundational frameworks like the Preamble to the Constitution of India."
+    }
   }
 }
