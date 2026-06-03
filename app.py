@@ -164,8 +164,8 @@ if page == "Main Analysis":
             
             btn_label = "🔓 De-Merge The Lenses" if st.session_state.synth_active else "🌪️ Synthesize (Overlay Lenses)"
             if st.sidebar.button(btn_label):
-            st.session_state.synth_active = not st.session_state.synth_active
-            st.rerun()    
+                st.session_state.synth_active = not st.session_state.synth_active
+                st.rerun()    
             
             st.markdown("---")
             st.markdown("### 📜 Philosophical Lineage & Narration")
