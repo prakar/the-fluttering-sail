@@ -1,5 +1,5 @@
-# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v4.5)
-# FINAL LOCKDOWN: Restored System Logs, OpenAI Proxy Fix, and Canonical Narrative.
+# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v4.6)
+# FIXED: Pagination boundary logic to ensure all 69+ words are accessible.
 
 import streamlit as st
 import json
@@ -20,7 +20,7 @@ st.set_page_config(
 )
 
 DB_NAME = "epistemic_lexicon.db"
-LOG_FILE = "framework.log" # Referenced in Section 6
+LOG_FILE = "framework.log"
 SCHEMA = {}
 CORPORA = {}
 
@@ -153,21 +153,29 @@ elif page == "Sanskrit Non-Translatables":
         all_terms = sorted(list(weights.keys()))
         total_words = len(all_terms)
         words_per_page = 10
+        
+        # Determine total pages
+        total_pages = (total_words + words_per_page - 1) // words_per_page
+        
         if 'page_index' not in st.session_state: st.session_state.page_index = 0
         
         col_list, col_main = st.columns([1, 2])
         with col_list:
             start = st.session_state.page_index * words_per_page
             end = min(start + words_per_page, total_words)
+            
             selected_term = st.radio("Terms (Discovery List):", all_terms[start:end])
+            
             p1, p2 = st.columns(2)
+            # FIXED: logic allows proceeding until the very last word
             if p1.button("⬅️ Back") and st.session_state.page_index > 0:
                 st.session_state.page_index -= 1
                 st.rerun()
-            if p2.button("Next ➡️") and end < total_words:
+            if p2.button("Next ➡️") and (st.session_state.page_index + 1) < total_pages:
                 st.session_state.page_index += 1
                 st.rerun()
-            st.caption(f"Page {st.session_state.page_index + 1}")
+                
+            st.caption(f"Page {st.session_state.page_index + 1} of {total_pages}")
 
         with col_main:
             if selected_term:
