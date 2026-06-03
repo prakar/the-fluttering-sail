@@ -60,6 +60,27 @@ def get_intensity_label(val):
         if val >= entry["threshold"]: return entry["label"]
     return "Neutral"
 
+def generate_philosophical_narration(vector):
+    dim_keys = ['u', 'f', 'p', 'm', 't', 's', 'd', 'c']
+    mat_sentences, dha_sentences = [], []
+    lineage_defs = SCHEMA.get("LINEAGE_MAP", {}) 
+
+    for idx, key in enumerate(dim_keys):
+        score = vector[idx]
+        intensity = get_intensity_label(score)
+        mapping = lineage_defs.get(key, {})
+        
+        if intensity == "Vestigial" and abs(score) < 0.05: continue
+            
+        name = mapping.get('thinker') if mapping.get('thinker') else mapping.get('school')
+        narrative_sentence = f"Exhibits a **{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a pattern of {mapping.get('desc')}"
+        
+        if idx < 4: mat_sentences.append(narrative_sentence)
+        else: dha_sentences.append(narrative_sentence)
+            
+    nyaya_triggered = np.std(vector) < 0.15 and np.mean(vector) > 0.4
+    return mat_sentences, dha_sentences, nyaya_triggered
+
 def generate_unified_synthesis(subject_name, vector_dict, source_context=""):
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key: return "⚠️ API Key missing."
@@ -84,26 +105,7 @@ def generate_unified_synthesis(subject_name, vector_dict, source_context=""):
     except Exception as e:
         return f"⚠️ Error: {str(e)}"
 
-def generate_philosophical_narration(vector):
-    dim_keys = ['u', 'f', 'p', 'm', 't', 's', 'd', 'c']
-    mat_sentences, dha_sentences = [], []
-    lineage_defs = SCHEMA.get("LINEAGE_MAP", {}) 
 
-    for idx, key in enumerate(dim_keys):
-        score = vector[idx]
-        intensity = get_intensity_label(score)
-        mapping = lineage_defs.get(key, {})
-        
-        if intensity == "Vestigial" and abs(score) < 0.05: continue
-            
-        name = mapping.get('thinker') if mapping.get('thinker') else mapping.get('school')
-        narrative_sentence = f"Exhibits a **{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a pattern of {mapping.get('desc')}"
-        
-        if idx < 4: mat_sentences.append(narrative_sentence)
-        else: dha_sentences.append(narrative_sentence)
-            
-    nyaya_triggered = np.std(vector) < 0.15 and np.mean(vector) > 0.4
-    return mat_sentences, dha_sentences, nyaya_triggered
 
 
 # --- 3. NAVIGATION BRIDGE ---
