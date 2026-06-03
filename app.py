@@ -1,5 +1,5 @@
-# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v4.4)
-# Fixed OpenAI instantiation error and reverted to original style.
+# ⛵ THE FLUTTERING SAIL: TOTAL SYSTEM INTEGRATION (v4.5)
+# FINAL LOCKDOWN: Restored System Logs, OpenAI Proxy Fix, and Canonical Narrative.
 
 import streamlit as st
 import json
@@ -10,7 +10,7 @@ import numpy as np
 import plotly.graph_objects as go
 import logging
 import openai
-import httpx # Necessary for the proxy fix
+import httpx 
 
 # --- 1. GLOBAL APP CONFIGURATION ---
 st.set_page_config(
@@ -20,7 +20,7 @@ st.set_page_config(
 )
 
 DB_NAME = "epistemic_lexicon.db"
-LOG_FILE = "framework.log"
+LOG_FILE = "framework.log" # Referenced in Section 6
 SCHEMA = {}
 CORPORA = {}
 
@@ -33,7 +33,7 @@ def load_assets():
 
 load_assets()
 
-# --- ORIGINAL CSS REVERSION ---
+# --- CANONICAL CSS ---
 st.markdown("""
     <style>
     .reportview-container .main .block-container { padding-top: 1rem; padding-bottom: 1rem; }
@@ -57,7 +57,6 @@ def generate_philosophical_narration(vector):
     dim_keys = ['u', 'f', 'p', 'm', 't', 's', 'd', 'c']
     mat_sentences, dha_sentences = [], []
     lineage_defs = SCHEMA.get("LINEAGE_MAP", {}) 
-    
     vec_vals = [vector.get(k, 0) if isinstance(vector, dict) else vector[i] for i, k in enumerate(dim_keys)]
 
     for idx, key in enumerate(dim_keys):
@@ -67,7 +66,6 @@ def generate_philosophical_narration(vector):
         if intensity == "Vestigial" and abs(score) < 0.05: continue
         name = mapping.get('thinker') if mapping.get('thinker') else mapping.get('school')
         line = f"Exhibits a **{intensity}** ({score:.2f}) alignment with {name} ({mapping.get('school')}), indicating a pattern of {mapping.get('desc')}"
-        
         if idx < 4: mat_sentences.append(line)
         else: dha_sentences.append(line)
     return mat_sentences, dha_sentences
@@ -75,13 +73,8 @@ def generate_philosophical_narration(vector):
 def generate_llm_synthesis(corpus_title, avg_dict, source_text):
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key: return "⚠️ **Synthesis Unavailable**: API Key not found."
-    
-    # FIX: Explicitly bypass proxy argument issues in Render/Httpx environments
     try:
-        client = openai.OpenAI(
-            api_key=api_key,
-            http_client=httpx.Client()
-        )
+        client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
         prompt = f"Synthesize analysis for {corpus_title}. Metrics: {avg_dict}. Text: {source_text[:1200]}"
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -90,8 +83,7 @@ def generate_llm_synthesis(corpus_title, avg_dict, source_text):
             temperature=0.3
         )
         return f"#### 🤖 Synthesized Opinion from AI:\n\n{response.choices[0].message.content}"
-    except Exception as e:
-        return f"⚠️ **Synthesis Error**: {str(e)}"
+    except Exception as e: return f"⚠️ **Synthesis Error**: {str(e)}"
 
 # --- 3. NAVIGATION BRIDGE ---
 page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Sanskrit Non-Translatables", "Under the Hood"])
@@ -139,10 +131,10 @@ if page == "Main Analysis":
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown('<p class="centered-label">MATERIALIST LENS</p>', unsafe_allow_html=True)
-                st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself')), use_container_width=True)
+                st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself', fillcolor='rgba(255, 65, 54, 0.3)')), use_container_width=True)
             with c2:
                 st.markdown('<p class="centered-label">DHARMIC–ESSENTIALIST LENS</p>', unsafe_allow_html=True)
-                st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself')), use_container_width=True)
+                st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', fillcolor='rgba(0, 116, 217, 0.3)')), use_container_width=True)
             
             st.markdown("---")
             st.markdown("### 📜 Philosophical Lineage & Narration")
@@ -190,7 +182,15 @@ elif page == "Sanskrit Non-Translatables":
 
 elif page == "Under the Hood":
     st.title("🛠️ Administrative Inspectability")
-    if os.path.exists(DB_NAME):
-        conn = sqlite3.connect(DB_NAME)
-        st.dataframe(pd.read_sql_query("SELECT * FROM lexicon", conn), use_container_width=True)
-        conn.close()
+    tab1, tab2 = st.tabs(["🗄️ SQLite Data Store", "📜 System Logs"])
+    with tab1:
+        if os.path.exists(DB_NAME):
+            conn = sqlite3.connect(DB_NAME)
+            st.dataframe(pd.read_sql_query("SELECT * FROM lexicon", conn), use_container_width=True)
+            conn.close()
+    with tab2:
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, "r") as f:
+                st.code(f.read(), language="text")
+        else:
+            st.info("System log file not found.")
