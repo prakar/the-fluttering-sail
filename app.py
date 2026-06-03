@@ -100,7 +100,7 @@ def generate_semantic_reconstruction(word, vector_dict):
     """
     try:
         client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
-        res = client.chat.com completions.create(
+        res = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "system", "content": "You are a master of Sanskrit non-translatables and comparative philosophy."},
                       {"role": "user", "content": prompt}],
