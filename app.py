@@ -61,14 +61,16 @@ def get_cached_synthesis(text_content, vector_dict):
 def generate_triangulated_meaning(vector_dict, source_context):
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key: return "⚠️ API Key Missing."
-    # Locked high-friction prompt: No lists, genuine conceptual triangulation
     prompt = f"""
     Topology: {vector_dict}
-    Snippet: "{source_context[:1000]}"
+    Text: "{source_context[:1000]}"
     
-    Construct a single, dense paragraph triangulating the 'essence' of this text. 
-    Explain its internal friction using the philosophical schools represented in the topology. 
-    DO NOT list weights or dimensions by name. Focus on the conceptual synthesis.
+    Write from 1 to 3 dense paragraphs, none exceeding 50 words, triangulating the essence of 'Text' above.
+    Use all the philosophical schools represented in 'Topology' to understand 'Text', and construct a narrative without mentioning the philosophies by name.
+    Be concise, choose density over niceties like saying hello and signing off.
+    Call out friction between the dimensions when you see it, also note alignment and consilience. Be absolutely unbiased.
+    DO NOT list or mention the weights or dimensions given to you, instead use the concepts they signify. 
+    At the end write an opinionated one-line verdict from 'Text' — for example, is it balanced, fair, biased, or equitable?
     """
     try:
         client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
