@@ -1,31 +1,31 @@
 {
   "INTENSITY_SCALE": [
-    {"threshold": 0.8, "label": "Dominant"},
-    {"threshold": 0.5, "label": "Significant"},
+    {"threshold": 0.7, "label": "Dominant"},
+    {"threshold": 0.4, "label": "Significant"},
     {"threshold": 0.2, "label": "Emergent"},
-    {"threshold": 0.01, "label": "Vestigial"}
+    {"threshold": 0.0, "label": "Vestigial"}
   ],
   "LINEAGE_MAP": {
     "u": {
-      "friendly_display": "Maximise Happiness (Utility)",
+      "friendly_display": "Maximising Happiness (Utility)",
       "thinker": "Jeremy Bentham",
       "school": "Consequentialism",
       "desc": "optimizing for aggregate outcomes and measurable social utility based on the greatest happiness for the greatest number."
     },
     "f": {
-      "friendly_display": "Justice & Equality (Fairness)",
+      "friendly_display": "Just and Equal (Fairness)",
       "thinker": "John Rawls",
       "school": "Justice as Fairness",
       "desc": "the structural integrity of justice, ensuring the most vulnerable are protected through the 'veil of ignorance'."
     },
     "p": {
-      "friendly_display": "Strategic Realism (Power)",
+      "friendly_display": "Strategic and Pragmatic (Power)",
       "thinker": "Thucydides",
       "school": "Political Realism",
       "desc": "the pragmatic exercise of influence and statecraft where the strong do what they can and the weak suffer what they must."
     },
     "m": {
-      "friendly_display": "Trend Imitation (Mimetic)",
+      "friendly_display": "Trend Imitator (Mimetic)",
       "thinker": "René Girard",
       "school": "Mimetic Theory",
       "desc": "the structural imitation of desire which leads to inevitable social rivalry, conflict, and the search for scapegoats."
@@ -37,7 +37,7 @@
       "desc": "the realization of a final cause or ultimate purpose in action, aimed at achieving eudaimonia through the cultivation of virtue."
     },
     "s": {
-      "friendly_display": "Principled & Dutiful (Structure)",
+      "friendly_display": "Principled and Duty-bound (Structure)",
       "thinker": "Immanuel Kant",
       "school": "Deontology",
       "desc": "the categorical imperative and the necessity of universal law, where actions are judged by their adherence to duty regardless of consequences."
@@ -49,13 +49,12 @@
       "desc": "duty-bound action aligned with the cosmic order (Rta), performing one's prescribed role without attachment to the results."
     },
     "c": {
-      "friendly_display": "Oneness View of World (Non-Dual)",
+      "friendly_display": "Seeing Oneness in All (Non-Dual)",
       "thinker": "Shankara",
       "school": "Advaita",
       "desc": "the non-dual awareness that underlies all phenomenal experience, realizing the fundamental identity between the individual self and the absolute."
     }
-  }
-},
+  },
   "FAILURE_MODES": {
     "baconian_collapse": {
       "title": "🚨 Baconian Collapse (Hyper-Optimization / Utility Extraction)",
