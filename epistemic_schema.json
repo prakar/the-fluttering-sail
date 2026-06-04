@@ -6,30 +6,71 @@
     {"threshold": 0.0, "label": "Vestigial"}
   ],
   "LINEAGE_MAP": {
-    "u": {"label": "Utility", "thinker": "Jeremy Bentham", "school": "Consequentialism", "desc": "optimizing for aggregate outcomes and measurable social utility."},
-    "f": {"label": "Fairness", "thinker": "John Rawls", "school": "Justice as Fairness", "desc": "the structural integrity of justice and the 'veil of ignorance'."},
-    "p": {"label": "Power", "thinker": "Thucydides", "school": "Political Realism", "desc": "the pragmatic exercise of influence and statecraft."},
-    "m": {"label": "Mimetic", "thinker": "René Girard", "school": "Mimetic Theory", "desc": "the structural imitation of desire and its resulting social rivalry."},
-    "t": {"label": "Telos", "thought_label": "Substantial Form", "thinker": "Aristotle", "school": "Virtue Ethics", "desc": "the realization of a final cause or ultimate purpose in action."},
-    "s": {"label": "Structure", "thinker": "Immanuel Kant", "school": "Deontology", "desc": "the categorical imperative and the necessity of universal law."},
-    "d": {"label": "Dharma", "thinker": "The Gita", "school": "Vedic Orthodoxy", "desc": "duty-bound action aligned with the cosmic order (Rta)."},
-    "c": {"label": "Consciousness", "thinker": "Shankara", "school": "Advaita", "desc": "the non-dual awareness that underlies all phenomenal experience."}
+    "u": {
+      "friendly_display": "Maximising Happiness (Utility)",
+      "thinker": "Jeremy Bentham",
+      "school": "Consequentialism",
+      "desc": "optimizing for aggregate outcomes and measurable social utility based on the greatest happiness for the greatest number."
+    },
+    "f": {
+      "friendly_display": "Just and Equal (Fairness)",
+      "thinker": "John Rawls",
+      "school": "Justice as Fairness",
+      "desc": "the structural integrity of justice, ensuring the most vulnerable are protected through the 'veil of ignorance'."
+    },
+    "p": {
+      "friendly_display": "Strategic and Pragmatic (Power)",
+      "thinker": "Thucydides",
+      "school": "Political Realism",
+      "desc": "the pragmatic exercise of influence and statecraft where the strong do what they can and the weak suffer what they must."
+    },
+    "m": {
+      "friendly_display": "Trend Imitator (Mimetic)",
+      "thinker": "René Girard",
+      "school": "Mimetic Theory",
+      "desc": "the structural imitation of desire which leads to inevitable social rivalry, conflict, and the search for scapegoats."
+    },
+    "t": {
+      "friendly_display": "Purpose Driven (Telos)",
+      "thinker": "Aristotle",
+      "school": "Virtue Ethics",
+      "desc": "the realization of a final cause or ultimate purpose in action, aimed at achieving eudaimonia through the cultivation of virtue."
+    },
+    "s": {
+      "friendly_display": "Principled and Duty-bound (Structure)",
+      "thinker": "Immanuel Kant",
+      "school": "Deontology",
+      "desc": "the categorical imperative and the necessity of universal law, where actions are judged by their adherence to duty regardless of consequences."
+    },
+    "d": {
+      "friendly_display": "Aligned With Cosmic Order (Dharma)",
+      "thinker": "The Gita",
+      "school": "Vedic Orthodoxy",
+      "desc": "duty-bound action aligned with the cosmic order (Rta), performing one's prescribed role without attachment to the results."
+    },
+    "c": {
+      "friendly_display": "Seeing Oneness in All (Non-Dual)",
+      "thinker": "Shankara",
+      "school": "Advaita",
+      "desc": "the non-dual awareness that underlies all phenomenal experience, realizing the fundamental identity between the individual self and the absolute."
+    }
   },
   "FAILURE_MODES": {
     "baconian_collapse": {
       "title": "🚨 Baconian Collapse (Hyper-Optimization / Utility Extraction)",
-      "desc": "Human agency reduced to modular, interchangeable pieces for a production pipeline. Optimizing throughput at the cost of ontological integrity.",
-      "conditions": {"u": [0.7, 1.0], "c": [0.0, 0.2]} 
+      "desc": "This zone flags text where human agency, linguistic expression, or natural systems have been utterly reduced to modular, interchangeable pieces for a production pipeline. The language optimized here is entirely extraction-oriented (e.g., late-stage corporate restructuring manifestos, standard algorithmic RLHF safety guidelines). The system warns that the system described is optimizing its own throughput at the direct cost of its underlying ontological integrity (Goodhart Alert)."
     },
     "mimetic_shear": {
       "title": "💥 Mimetic Shear (Power Dominance / Ontological Erasure)",
-      "desc": "Text caught in a self-authenticating trap of existential conflict. Erases transcendent awareness for a closed-loop game of defensive posture.",
-      "conditions": {"m": [0.6, 1.0], "p": [0.6, 1.0], "d": [0.0, 0.3]}
+      "desc": "This zone identifies text caught in a self-authenticating trap of existential conflict, competitive survival, or structural domination (Scapegoat Warning). The language actively erases the possibility of transcendent awareness or sacred duty, replacing them with a closed-loop game of defensive posture or aggressive optimization. This is typical of hyper-partisan propaganda, wartime mobilization decrees, and algorithmic engagement loops optimized for outrage."
     },
-    "legalistic_ossification": {
-      "title": "⚖️ Legalistic Ossification (Rigid Deontology)",
-      "desc": "Adherence to rules (Structure) has become so rigid it ceases to serve human happiness or the living spirit of the law.",
-      "conditions": {"s": [0.7, 1.0], "u": [0.0, 0.3], "d": [0.0, 0.3]}
+    "ascetic_drift": {
+      "title": "🪁 Ascetic Drift (Hyper-Transcendence / Civic Deficit)",
+      "desc": "This zone identifies text that has drifted entirely into the vertical axis of transcendent liberation (Moksha or pure witness observation) while abandoning the horizontal matrix of worldly realization (Artha, Kama, and civic Dharma). The system triggers an Abstraction Drift warning, notifying researchers that the corpus fails to provide an actionable framework for institutional execution or distributive justice."
+    },
+    "equilibrium_zone": {
+      "title": "⚖️ Equilibrium Zone (Holistic Synthesis / Purushartha Alignment)",
+      "desc": "The gold standard of the framework. This zone represents text that achieves a balanced integration of worldly efficiency and transcendent purpose (Purushartha Blueprint). It honors the rules of material governance, equity, and operational reality without sacrificing the essential, non-reducible nature of human and ecological systems. Epitomized by foundational frameworks like the Preamble to the Constitution of India."
     }
   }
 }
