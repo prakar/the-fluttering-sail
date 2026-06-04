@@ -177,13 +177,7 @@ def get_cached_synthesis(text_content, vector_dict):
 
 def generate_triangulated_meaning(vector_dict, source_context):
     api_key = os.environ.get("OPENAI_API_KEY")
-<<<<<<< HEAD
-    if not api_key:
-        logger.warning("generate_triangulated_meaning: OPENAI_API_KEY not set")
-        return "⚠️ API Key Missing. Set OPENAI_API_KEY in your environment."
-=======
     if not api_key: return "⚠️ API Key Missing."
->>>>>>> 6898de0b30c341bd36a87f08558cfea7fec8941b
     prompt = f"""
     Topology: {vector_dict}
     Text: "{source_context[:1000]}"
