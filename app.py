@@ -76,47 +76,53 @@ def generate_philosophical_narration(vector):
         else: dha_sentences.append(line)
     return mat_sentences, dha_sentences
 
-def generate_llm_synthesis(corpus_title, avg_dict, source_text):
+def generate_unified_synthesis(subject_name, vector_dict, source_context=""):
+    """UNIFIED & HIGH-DENSITY SYNTHESIS ENGINE: Hard-coded for strict token spend and precision."""
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key: return "⚠️ **Synthesis Unavailable**: API Key not found."
-    try:
-        # OPENAI PROXY FIX: Explicit httpx Client passing to prevent Render initialization errors
-        client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
-        prompt = f"Synthesize analysis for {corpus_title}. Metrics: {avg_dict}. Text: {source_text[:1200]}"
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "system", "content": "You are a philosophical synthesizer."},
-                      {"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-        return f"#### 🤖 Synthesized Opinion from AI:\n\n{response.choices[0].message.content}"
-    except Exception as e: return f"⚠️ **Synthesis Error**: {str(e)}"
+    
+    system_prompt = (
+        "You are a professional multi-polar philosophical synthesizer. Rules: "
+        "1. Be extremely concise. "
+        "2. Max 50 words. "
+        "3. Sacrifice grammar for density. "
+        "4. No filler, no introductions ('Based on...'), no conversational sign-offs. "
+        "5. Directly triangulate target meaning by creating critical analytical friction "
+        "using the specific philosophical weights and descriptions provided."
+    )
+    
+    # Pack schema contextual metadata directly into the generation layer
+    lineage_map = SCHEMA.get("LINEAGE_MAP", {})
+    detailed_weights = {}
+    for k, v in vector_dict.items():
+        sch = lineage_map.get(k, {})
+        label = sch.get("friendly_display", k)
+        desc = sch.get("desc", "")
+        detailed_weights[label] = {"weight": f"{v:.2f}", "context": desc}
 
-def generate_semantic_reconstruction(word, vector_dict):
-    """PIVOT FEATURE: Quantization-driven contextual reconstruction to bust nontranslatability."""
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key: return "⚠️ **Synthesis Unavailable**: API Key not found."
+    user_prompt = f"Subject/Word: {subject_name}. Weight System Map: {detailed_weights}. Source Context Extract: {source_context[:600]}"
     
-    prompt = f"""
-    The Sanskrit word is: '{word}'. 
-    Its vector topology (weights) is: {vector_dict}.
-    
-    Using these philosophical alignments, construct a synthesis passage that explains the 'nontranslatable' 
-    meaning of this word. Do not translate it into a single English word. 
-    Instead, triangulate its meaning using the specific thinkers and schools listed in its weights.
-    The goal is to build its meaning through context-rich philosophical friction.
-    """
     try:
         client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
         res = client.chat.completions.create(
             model="gpt-4o",
-            messages=[{"role": "system", "content": "You are a master of Sanskrit non-translatables and comparative philosophy."},
-                      {"role": "user", "content": prompt}],
-            temperature=0.3
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.3,
+            max_tokens=100
         )
         return res.choices[0].message.content
     except Exception as e:
-        return f"⚠️ **Reconstruction Engine Error**: {str(e)}"
+        return f"⚠️ **Synthesis Engine Error**: {str(e)}"
+
+def get_radar_data(keys_list, data_dict):
+    """SINGLE SOURCE OF TRUTH: Dynamically extracts labels and data paths to lock trace alignment."""
+    lineage_map = SCHEMA.get("LINEAGE_MAP", {})
+    labels = [lineage_map.get(k, {}).get("friendly_display", k) for k in keys_list]
+    values = [data_dict.get(k, 0) for k in keys_list]
+    return labels, values
 
 # --- 3. NAVIGATION BRIDGE ---
 page = st.sidebar.selectbox("Navigation Bridge", ["Main Analysis", "Sanskrit Non-Translatables", "Under the Hood"])
@@ -127,11 +133,6 @@ if page == "Main Analysis":
 
     if 'synth_active' not in st.session_state: 
         st.session_state.synth_active = False
-    
-    btn_label = "🔓 De-Merge The Lenses" if st.session_state.synth_active else "🌪️ Synthesize (Overlay Lenses)"
-    if st.sidebar.button(btn_label):
-        st.session_state.synth_active = not st.session_state.synth_active
-        st.rerun()
 
     # PERSISTENT DOCUMENT SELECTION & SIDEBAR CUSTOM TEXT CONSTRAINTS
     doc_options = list(CORPORA.keys()) + ["Custom Text..."]
@@ -156,23 +157,55 @@ if page == "Main Analysis":
         avg_vec = df_vectors[['u', 'f', 'p', 'm', 't', 's', 'd', 'c']].mean()
         avg_dict = avg_vec.to_dict()
         
+        # Segment definitions out dynamically via schema structures
+        mat_keys = ['u', 'f', 'p', 'm']
+        ess_keys = ['t', 's', 'd', 'c']
+        
         if st.session_state.synth_active:
             # --- OVERLAY GRAPH VIEW ---
+            m_labels, m_values = get_radar_data(mat_keys, avg_dict)
+            e_labels, e_values = get_radar_data(ess_keys, avg_dict)
+            
             fig_synth = go.Figure()
-            fig_synth.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself', name='Materialist', line=dict(color='red')))
-            fig_synth.add_trace(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', name='Dharmic', line=dict(color='blue')))
-            fig_synth.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), height=400)
+            fig_synth.add_trace(go.Scatterpolar(r=m_values, theta=m_labels, fill='toself', name='Materialist', line=dict(color='red')))
+            fig_synth.add_trace(go.Scatterpolar(r=e_values, theta=e_labels, fill='toself', name='Dharmic', line=dict(color='blue')))
+            fig_synth.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+                margin=dict(l=100, r=100, t=40, b=40), 
+                height=500 
+            )
             st.plotly_chart(fig_synth, use_container_width=True)
-            st.markdown(generate_llm_synthesis(selected_doc, avg_dict, input_text))
+            
+            # Button Location: Rendered directly beneath the overlay chart canvas
+            if st.button("🔓 De-Merge The Lenses"):
+                st.session_state.synth_active = False
+                st.rerun()
+                
+            st.markdown("### 🌪️ Synthesized Topological Meaning")
+            with st.spinner("Compiling cross-lens summary matrix..."):
+                synthesis_passage = generate_unified_synthesis(selected_doc, avg_dict, input_text)
+                st.markdown(f'<div class="synthesis-box">{synthesis_passage}</div>', unsafe_allow_html=True)
         else:
             # --- SPLIT GRAPH VIEW ---
+            m_labels, m_values = get_radar_data(mat_keys, avg_dict)
+            e_labels, e_values = get_radar_data(ess_keys, avg_dict)
+            
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown('<p class="centered-label">MATERIALIST LENS</p>', unsafe_allow_html=True)
-                st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['f','p','m','u']], theta=['Fairness','Power','Mimetic','Utility'], fill='toself', fillcolor='rgba(255, 65, 54, 0.3)')), use_container_width=True)
+                fig_mat = go.Figure(go.Scatterpolar(r=m_values, theta=m_labels, fill='toself', fillcolor='rgba(255, 65, 54, 0.3)'))
+                fig_mat.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), margin=dict(l=100, r=100, t=40, b=40), height=500)
+                st.plotly_chart(fig_mat, use_container_width=True)
             with c2:
                 st.markdown('<p class="centered-label">DHARMIC–ESSENTIALIST LENS</p>', unsafe_allow_html=True)
-                st.plotly_chart(go.Figure(go.Scatterpolar(r=[avg_dict[d] for d in ['s','t','c','d']], theta=['Structure','Telos','Non-Dual','Dharma'], fill='toself', fillcolor='rgba(0, 116, 217, 0.3)')), use_container_width=True)
+                fig_ess = go.Figure(go.Scatterpolar(r=e_values, theta=e_labels, fill='toself', fillcolor='rgba(0, 116, 217, 0.3)'))
+                fig_ess.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), margin=dict(l=100, r=100, t=40, b=40), height=500)
+                st.plotly_chart(fig_ess, use_container_width=True)
+            
+            # Button Location: Rendered below the discrete dual-lens layouts
+            if st.button("🌪️ Synthesize (Overlay Lenses)"):
+                st.session_state.synth_active = True
+                st.rerun()
             
             st.markdown("---")
             st.markdown("### 📜 Philosophical Lineage & Narration")
@@ -218,15 +251,19 @@ elif page == "Sanskrit Non-Translatables":
                 vals = weights[selected_term]
                 val_dict = dict(zip(['u','f','p','m','t','s','d','c'], vals))
                 
-                # Codex Polar Visualization
-                f_codex = go.Figure(data=go.Scatterpolar(r=vals, theta=['u','f','p','m','t','s','d','c'], fill='toself', fillcolor='rgba(147,51,234,0.2)'))
-                f_codex.update_layout(polar=dict(radialaxis=dict(visible=True, range=[-1, 1])), height=400)
+                # Dynamic full trace resolution
+                all_keys = ['u','f','p','m','t','s','d','c']
+                c_labels, c_values = get_radar_data(all_keys, val_dict)
+                
+                # Codex Polar Visualization - maps out to full 8-spoke schema labels
+                f_codex = go.Figure(data=go.Scatterpolar(r=c_values, theta=c_labels, fill='toself', fillcolor='rgba(147,51,234,0.2)'))
+                f_codex.update_layout(polar=dict(radialaxis=dict(visible=True, range=[-1, 1])), margin=dict(l=100, r=100, t=40, b=40), height=500)
                 st.plotly_chart(f_codex, use_container_width=True)
                 
-                # --- NEW INTEGRATED SEMANTIC RECONSTRUCTION PASSAGE ---
+                # --- INTEGRATED UNIFIED RECONSTRUCTION PASSAGE ---
                 st.markdown("### 🌪️ Semantic Reconstruction (The Nontranslatable Essence)")
                 with st.spinner(f"Triangulating meaning for {selected_term}..."):
-                    reconstruction = generate_semantic_reconstruction(selected_term, val_dict)
+                    reconstruction = generate_unified_synthesis(selected_term, val_dict)
                     st.markdown(f'<div class="synthesis-box">{reconstruction}</div>', unsafe_allow_html=True)
                 
                 st.markdown("---")
