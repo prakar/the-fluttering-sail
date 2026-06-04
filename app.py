@@ -65,12 +65,12 @@ def generate_triangulated_meaning(vector_dict, source_context):
     Topology: {vector_dict}
     Text: "{source_context[:1000]}"
     
-    Write from 1 to 3 dense paragraphs, none exceeding 50 words, triangulating the essence of 'Text' above.
-    Use all the philosophical schools represented in 'Topology' to understand 'Text', and construct a narrative without mentioning the philosophies by name.
+    Write from 1 to 3 dense paragraphs, none exceeding 50 words, triangulating the essence of Text above.
+    Use all the philosophical schools represented in Topology to understand Text, and construct a narrative without mentioning the philosophies by name.
     Be concise, choose density over niceties like saying hello and signing off.
     Call out friction between the dimensions when you see it, also note alignment and consilience. Be absolutely unbiased.
-    DO NOT list or mention the weights or dimensions given to you, instead use the concepts they signify. 
-    At the end write an opinionated one-line verdict from 'Text' — for example, is it balanced, fair, biased, or equitable?
+    DO NOT list or mention the weights or dimensions given to you, instead weave use the concepts they signify into the narrative. 
+    At the end write an opinionated one-line verdict from Text — for example, is it balanced, fair, biased, or equitable?
     """
     try:
         client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
