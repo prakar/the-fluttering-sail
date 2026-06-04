@@ -1,20 +1,61 @@
 {
   "INTENSITY_SCALE": [
-    {"threshold": 0.7, "label": "Dominant"},
-    {"threshold": 0.4, "label": "Significant"},
+    {"threshold": 0.8, "label": "Dominant"},
+    {"threshold": 0.5, "label": "Significant"},
     {"threshold": 0.2, "label": "Emergent"},
-    {"threshold": 0.0, "label": "Vestigial"}
+    {"threshold": 0.01, "label": "Vestigial"}
   ],
   "LINEAGE_MAP": {
-    "u": {"label": "Utility", "thinker": "Jeremy Bentham", "school": "Consequentialism", "desc": "optimizing for aggregate outcomes and measurable social utility."},
-    "f": {"label": "Fairness", "thinker": "John Rawls", "school": "Justice as Fairness", "desc": "the structural integrity of justice and the 'veil of ignorance'."},
-    "p": {"label": "Power", "thinker": "Thucydides", "school": "Political Realism", "desc": "the pragmatic exercise of influence and statecraft."},
-    "m": {"label": "Mimetic", "thinker": "René Girard", "school": "Mimetic Theory", "desc": "the structural imitation of desire and its resulting social rivalry."},
-    "t": {"label": "Telos", "thought_label": "Substantial Form", "thinker": "Aristotle", "school": "Virtue Ethics", "desc": "the realization of a final cause or ultimate purpose in action."},
-    "s": {"label": "Structure", "thinker": "Immanuel Kant", "school": "Deontology", "desc": "the categorical imperative and the necessity of universal law."},
-    "d": {"label": "Dharma", "thinker": "The Gita", "school": "Vedic Orthodoxy", "desc": "duty-bound action aligned with the cosmic order (Rta)."},
-    "c": {"label": "Consciousness", "thinker": "Shankara", "school": "Advaita", "desc": "the non-dual awareness that underlies all phenomenal experience."}
-  },
+    "u": {
+      "friendly_display": "Maximise Happiness (Utility)",
+      "thinker": "Jeremy Bentham",
+      "school": "Consequentialism",
+      "desc": "optimizing for aggregate outcomes and measurable social utility based on the greatest happiness for the greatest number."
+    },
+    "f": {
+      "friendly_display": "Justice & Equality (Fairness)",
+      "thinker": "John Rawls",
+      "school": "Justice as Fairness",
+      "desc": "the structural integrity of justice, ensuring the most vulnerable are protected through the 'veil of ignorance'."
+    },
+    "p": {
+      "friendly_display": "Strategic Realism (Power)",
+      "thinker": "Thucydides",
+      "school": "Political Realism",
+      "desc": "the pragmatic exercise of influence and statecraft where the strong do what they can and the weak suffer what they must."
+    },
+    "m": {
+      "friendly_display": "Trend Imitation (Mimetic)",
+      "thinker": "René Girard",
+      "school": "Mimetic Theory",
+      "desc": "the structural imitation of desire which leads to inevitable social rivalry, conflict, and the search for scapegoats."
+    },
+    "t": {
+      "friendly_display": "Purpose Driven (Telos)",
+      "thinker": "Aristotle",
+      "school": "Virtue Ethics",
+      "desc": "the realization of a final cause or ultimate purpose in action, aimed at achieving eudaimonia through the cultivation of virtue."
+    },
+    "s": {
+      "friendly_display": "Principled & Dutiful (Structure)",
+      "thinker": "Immanuel Kant",
+      "school": "Deontology",
+      "desc": "the categorical imperative and the necessity of universal law, where actions are judged by their adherence to duty regardless of consequences."
+    },
+    "d": {
+      "friendly_display": "Aligned With Cosmic Order (Dharma)",
+      "thinker": "The Gita",
+      "school": "Vedic Orthodoxy",
+      "desc": "duty-bound action aligned with the cosmic order (Rta), performing one's prescribed role without attachment to the results."
+    },
+    "c": {
+      "friendly_display": "Oneness View of World (Non-Dual)",
+      "thinker": "Shankara",
+      "school": "Advaita",
+      "desc": "the non-dual awareness that underlies all phenomenal experience, realizing the fundamental identity between the individual self and the absolute."
+    }
+  }
+},
   "FAILURE_MODES": {
     "baconian_collapse": {
       "title": "🚨 Baconian Collapse (Hyper-Optimization / Utility Extraction)",
