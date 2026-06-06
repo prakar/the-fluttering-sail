@@ -37,10 +37,6 @@ logger.addHandler(memory_handler)
 # Also capture root so plotly/sqlite noise is visible if needed
 logging.getLogger().addHandler(memory_handler)
 
-logger.addHandler(memory_handler)
-# Also capture root so plotly/sqlite noise is visible if needed
-logging.getLogger().addHandler(memory_handler)
-
 st.set_page_config(page_title="The Fluttering Sail", page_icon="⛵", layout="wide")
 
 DB_NAME = "epistemic_lexicon.db"
@@ -75,7 +71,194 @@ def init_db():
 load_assets()
 init_db()
 
-# --- 2. LOGIC ENGINES ---
+# --- 2. DIAGNOSTIC ENGINE ---
+
+import numpy as np
+
+# Threshold constants — documented in the paper as Table 1
+DIAG_THRESHOLDS = {
+    "baconian_u_min":    0.80,
+    "baconian_t_max":    0.15,
+    "baconian_s_max":    0.10,
+    "mimetic_p_min":     0.75,
+    "mimetic_m_min":     0.70,
+    "mimetic_d_max":     0.20,
+    "mimetic_c_max":     0.15,
+    "ascetic_c_min":     0.90,
+    "ascetic_t_min":     0.85,
+    "ascetic_u_max":     0.20,
+    "ascetic_f_max":     0.20,
+    "equilibrium_f_min": 0.70,
+    "equilibrium_u_min": 0.60,
+    "equilibrium_d_min": 0.75,
+    "equilibrium_s_min": 0.75,
+    "nyaya_sigma_max":   0.15,
+    "nyaya_mu_min":      0.40,
+}
+
+def run_diagnostics(avg: dict) -> list:
+    """
+    Evaluate avg_dict against all geometric diagnostic zones.
+    Returns list of triggered alerts: [{"name", "level", "icon", "headline", "detail"}, ...]
+    level: "warning" | "error" | "success" | "info"
+    """
+    alerts = []
+    u  = avg.get('u', 0);  f = avg.get('f', 0)
+    p  = avg.get('p', 0);  m = avg.get('m', 0)
+    t  = avg.get('t', 0);  s = avg.get('s', 0)
+    d  = avg.get('d', 0);  c = avg.get('c', 0)
+    th = DIAG_THRESHOLDS
+
+    # -- Baconian Collapse --
+    if u >= th["baconian_u_min"] and abs(t) <= th["baconian_t_max"] and abs(s) <= th["baconian_s_max"]:
+        alerts.append({
+            "name":     "Baconian Collapse",
+            "level":    "error",
+            "icon":     "⚙️",
+            "headline": "Baconian Collapse — Hyper-Optimisation / Utility Extraction",
+            "detail":   (
+                f"Utility is dominant (U={u:+.2f}) while Telos (T={t:+.2f}) and "
+                f"Structure (S={s:+.2f}) are near-zero. This text treats human agency "
+                "and natural systems as raw inputs for a production pipeline. "
+                "Language is entirely extraction-oriented."
+            ),
+        })
+        logger.info("🚨 Diagnostic: Baconian Collapse triggered (U=%.2f, T=%.2f, S=%.2f)", u, t, s)
+
+    # -- Mimetic Shear --
+    if (p >= th["mimetic_p_min"] and abs(m) >= th["mimetic_m_min"]
+            and abs(d) <= th["mimetic_d_max"] and abs(c) <= th["mimetic_c_max"]):
+        alerts.append({
+            "name":     "Mimetic Shear",
+            "level":    "error",
+            "icon":     "⚔️",
+            "headline": "Mimetic Shear — Power Dominance / Ontological Erasure",
+            "detail":   (
+                f"Power (P={p:+.2f}) and Mimetic conflict (M={m:+.2f}) dominate "
+                f"while Dharma (D={d:+.2f}) and Consciousness (C={c:+.2f}) collapse. "
+                "This is the signature of hyper-partisan propaganda, outrage loops, "
+                "or wartime mobilisation language. The text severs connection to "
+                "holistic cosmic balance (Ṛta)."
+            ),
+        })
+        logger.info("🚨 Diagnostic: Mimetic Shear triggered (P=%.2f, M=%.2f, D=%.2f, C=%.2f)", p, m, d, c)
+
+    # -- Ascetic Drift --
+    if (abs(c) >= th["ascetic_c_min"] and abs(t) >= th["ascetic_t_min"]
+            and abs(u) <= th["ascetic_u_max"] and abs(f) <= th["ascetic_f_max"]):
+        alerts.append({
+            "name":     "Ascetic Drift",
+            "level":    "warning",
+            "icon":     "🌫️",
+            "headline": "Ascetic Drift — Hyper-Transcendence / Civic Deficit",
+            "detail":   (
+                f"Consciousness (C={c:+.2f}) and Telos (T={t:+.2f}) are extreme "
+                f"while Utility (U={u:+.2f}) and Fairness (F={f:+.2f}) collapse. "
+                "This text is ethically pure but lacks actionable framework for "
+                "institutional execution, distributive justice, or collective governance."
+            ),
+        })
+        logger.info("⚠️  Diagnostic: Ascetic Drift triggered (C=%.2f, T=%.2f, U=%.2f, F=%.2f)", c, t, u, f)
+
+    # -- Equilibrium / Purushartha --
+    if (f >= th["equilibrium_f_min"] and u >= th["equilibrium_u_min"]
+            and abs(d) >= th["equilibrium_d_min"] and abs(s) >= th["equilibrium_s_min"]):
+        alerts.append({
+            "name":     "Purushartha Equilibrium",
+            "level":    "success",
+            "icon":     "🪷",
+            "headline": "Purushartha Blueprint — Holistic Synthesis / Equilibrium Zone",
+            "detail":   (
+                f"Balanced high-magnitude convergence: F={f:+.2f}, U={u:+.2f}, "
+                f"D={d:+.2f}, S={s:+.2f}. This text achieves integration of worldly "
+                "efficiency and transcendent purpose — the gold standard of the framework."
+            ),
+        })
+        logger.info("🪷  Diagnostic: Purushartha Equilibrium triggered")
+
+    # -- Nyaya Meta-Condition (balanced across ALL 8 dims) --
+    vals = np.array([u, f, p, m, t, s, d, c])
+    sigma = float(np.std(np.abs(vals)))
+    mu    = float(np.mean(np.abs(vals)))
+    if sigma <= th["nyaya_sigma_max"] and mu >= th["nyaya_mu_min"]:
+        alerts.append({
+            "name":     "Nyaya Meta-Condition",
+            "level":    "info",
+            "icon":     "🔷",
+            "headline": "Nyaya Meta-Condition — Epistemological Stability",
+            "detail":   (
+                f"σ={sigma:.3f} (≤{th['nyaya_sigma_max']}) and μ={mu:.3f} "
+                f"(≥{th['nyaya_mu_min']}) across all 8 dimensions. "
+                "This corpus reflects a harmonised, epistemologically stable worldview "
+                "consistent with classical Nyaya analytical equilibrium."
+            ),
+        })
+        logger.info("🔷 Diagnostic: Nyaya Meta-Condition triggered (σ=%.3f, μ=%.3f)", sigma, mu)
+
+    if not alerts:
+        logger.info("📊 Diagnostics: no thresholds breached")
+    return alerts
+
+
+def render_diagnostics(alerts: list):
+    """Render alert banners in the UI. Called after radar charts."""
+    if not alerts:
+        return
+    st.markdown("---")
+    st.markdown("### 🔬 Diagnostic Alerts")
+    for a in alerts:
+        fn = {"error": st.error, "warning": st.warning,
+              "success": st.success, "info": st.info}[a["level"]]
+        fn(f"{a['icon']} **{a['headline']}**\n\n{a['detail']}")
+
+
+def make_flutter_frames(keys_list, data_dict, n_frames=12, noise_sigma=0.013):
+    """
+    Generate Plotly animation frames for the 'flutter' effect.
+    Each frame adds tiny Gaussian noise to the aligned trace only —
+    visually communicating that weights are approximations, not fixed truth.
+    noise_sigma=0.013 is subtle enough not to distort shape.
+    """
+    lineage_map = SCHEMA.get("LINEAGE_MAP", {})
+    labels, base_aligned, base_antag = [], [], []
+    for k in keys_list:
+        raw = data_dict.get(k, 0)
+        m   = lineage_map.get(k.lower(), {})
+        friendly = m.get("friendly_display", k)
+        label = f"↙ {friendly}<br><i>(Antagonistic)</i>" if raw < 0 else friendly.replace(" (", "<br>(")
+        labels.append(label)
+        base_aligned.append(max(raw, 0))
+        base_antag.append(abs(min(raw, 0)))
+
+    labels_c    = labels       + [labels[0]]
+    base_antag_c = base_antag  + [base_antag[0]]
+
+    frames = []
+    for i in range(n_frames):
+        noise = np.random.normal(0, noise_sigma, len(base_aligned))
+        noisy = np.clip(np.array(base_aligned) + noise, 0, 1).tolist()
+        noisy_c = noisy + [noisy[0]]
+        frames.append(go.Frame(
+            data=[
+                go.Scatterpolar(r=noisy_c,    theta=labels_c),   # trace 0: aligned (flutter)
+                go.Scatterpolar(r=base_antag_c, theta=labels_c), # trace 1: antagonistic (stable)
+            ],
+            name=str(i)
+        ))
+    return frames, labels_c, base_aligned, base_antag
+
+
+def make_radar_figure_animated(keys_list, data_dict, fillcolor=None, line_color=None, height=420):
+    """
+    Static dual-trace radar for Main Analysis page.
+    Flutter removed — was consuming vertical space with buttons.
+    Canvas fills ~90% of the figure via domain + tight margins.
+    """
+    return make_radar_figure(keys_list, data_dict,
+                             fillcolor=fillcolor, line_color=line_color, height=height)
+
+
+# --- 3. LOGIC ENGINES ---
 
 def make_radar_figure(keys_list, data_dict, title=None, fillcolor=None, line_color=None, height=420):
     """
@@ -128,17 +311,18 @@ def make_radar_figure(keys_list, data_dict, title=None, fillcolor=None, line_col
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, 1],
+                range=[0, 0.75],
                 tickfont=dict(size=9),
-                tickvals=[0, 0.25, 0.5, 0.75, 1],
+                tickvals=[0, 0.25, 0.5, 0.75],
             ),
             angularaxis=dict(tickfont=dict(size=11)),
-            hole=0.08,
+            hole=0.0,
+            domain=dict(x=[0.0, 1.0], y=[0.0, 1.0]),
         ),
         height=height,
-        margin=dict(l=80, r=80, t=40, b=80),
+        margin=dict(l=70, r=70, t=50, b=70),
         showlegend=True,
-        legend=dict(orientation='h', y=-0.12, font=dict(size=11)),
+        legend=dict(orientation='h', y=-0.08, font=dict(size=11)),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
     )
@@ -195,11 +379,13 @@ def make_overlay_figure(mat_dict, dharmic_dict, height=520):
     ))
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(visible=True, range=[0, 1], tickfont=dict(size=9)),
+            radialaxis=dict(visible=True, range=[0, 0.75], tickfont=dict(size=9),
+                            tickvals=[0, 0.25, 0.5, 0.75]),
             angularaxis=dict(tickfont=dict(size=11)),
+            domain=dict(x=[0.0, 1.0], y=[0.0, 1.0]),
         ),
         height=height,
-        margin=dict(l=80, r=80, t=50, b=80),
+        margin=dict(l=70, r=70, t=50, b=70),
         legend=dict(orientation='h', y=-0.18, font=dict(size=10)),
         paper_bgcolor='rgba(0,0,0,0)',
     )
@@ -309,9 +495,12 @@ if page == "Main Analysis":
             if st.session_state.get('synth_active', False):
                 # --- SYNTHESIS (MERGED) VIEW ---
                 st.plotly_chart(make_overlay_figure(avg_dict, avg_dict), use_container_width=True)
-                if st.button("🔓 De-Merge Lenses"):
-                    st.session_state.synth_active = False
-                    st.rerun()
+                render_diagnostics(run_diagnostics(avg_dict))
+                _, btn_col, _ = st.columns([2, 1, 2])
+                with btn_col:
+                    if st.button("🔓 De-Merge Lenses", use_container_width=True):
+                        st.session_state.synth_active = False
+                        st.rerun()
                 st.markdown("### 🌪️ Synthesized Topological Meaning")
                 res, h = get_cached_synthesis(input_text, avg_dict)
                 if res:
@@ -328,7 +517,7 @@ if page == "Main Analysis":
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("### MATERIALIST LENS")
-                    fig = make_radar_figure(
+                    fig = make_radar_figure_animated(
                         MAT_DIMS, avg_dict,
                         fillcolor='rgba(255,80,80,0.2)',
                         line_color='rgba(255,80,80,0.9)'
@@ -336,16 +525,20 @@ if page == "Main Analysis":
                     st.plotly_chart(fig, use_container_width=True)
                 with c2:
                     st.markdown("### DHARMIC-ESSENTIALIST LENS")
-                    fig = make_radar_figure(
+                    fig = make_radar_figure_animated(
                         DHARMIC_DIMS, avg_dict,
                         fillcolor='rgba(80,130,255,0.2)',
                         line_color='rgba(80,130,255,0.9)'
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                if st.button("🌪️ Synthesize (Overlay Lenses)"):
-                    st.session_state.synth_active = True
-                    st.rerun()
+                render_diagnostics(run_diagnostics(avg_dict))
+
+                _, btn_col, _ = st.columns([2, 1, 2])
+                with btn_col:
+                    if st.button("🌪️ Synthesize (Overlay Lenses)", use_container_width=True):
+                        st.session_state.synth_active = True
+                        st.rerun()
 
                 st.markdown("---")
                 st.markdown("### 📜 Philosophical Lineage & Narration")
