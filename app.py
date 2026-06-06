@@ -75,92 +75,128 @@ init_db()
 
 def make_radar_figure(keys_list, data_dict, title=None, fillcolor=None, line_color=None, height=420):
     """
-    Build a Plotly Scatterpolar figure.
-    - radialaxis range is ALWAYS [-1, 1] because DB values span that range.
-    - automargin=True on angularaxis so labels never clip.
-    - Slightly smaller default height so charts fit without scrolling.
+    Dual-trace Scatterpolar.
+    - Trace 1 (blue): aligned dimensions (raw >= 0), clamped to 0 where negative.
+    - Trace 2 (orange): antagonistic dimensions (raw < 0), abs() value, clamped to 0 where positive.
+    Angular labels carry '↙ (Antagonistic)' marker on negative spokes.
+    Range [0,1] — spoke length = intensity; colour = polarity.
     """
     lineage_map = SCHEMA.get("LINEAGE_MAP", {})
-    labels, values = [], []
+    labels, aligned_vals, antag_vals = [], [], []
+
     for k in keys_list:
+        raw = data_dict.get(k, 0)
         mapping = lineage_map.get(k.lower(), {})
         friendly = mapping.get("friendly_display", k)
-        logger.debug("📍 Radar map '%s' → '%s' = %.3f", k, friendly, data_dict.get(k, 0))
-        labels.append(friendly.replace(" (", "<br>("))
-        values.append(data_dict.get(k, 0))
+        if raw < 0:
+            label_text = f"↙ {friendly}<br><i>(Antagonistic)</i>"
+            aligned_vals.append(0)
+            antag_vals.append(abs(raw))
+        else:
+            label_text = friendly.replace(" (", "<br>(")
+            aligned_vals.append(raw)
+            antag_vals.append(0)
+        logger.debug("📍 Radar '%s' raw=%.3f antagonistic=%s", k, raw, raw < 0)
+        labels.append(label_text)
 
-    fc  = fillcolor  or 'rgba(100,160,255,0.25)'
-    lc  = line_color or 'rgba(100,160,255,0.9)'
+    # Close polygon
+    labels_c       = labels       + [labels[0]]
+    aligned_vals_c = aligned_vals + [aligned_vals[0]]
+    antag_vals_c   = antag_vals   + [antag_vals[0]]
 
-    fig = go.Figure(go.Scatterpolar(
-        r=values + [values[0]],          # close the polygon
-        theta=labels + [labels[0]],
-        fill='toself',
-        fillcolor=fc,
-        line=dict(color=lc, width=2),
-        name=title or "",
+    aligned_color = fillcolor  or 'rgba(100,160,255,0.25)'
+    aligned_line  = line_color or 'rgba(100,160,255,0.9)'
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=aligned_vals_c, theta=labels_c,
+        fill='toself', fillcolor=aligned_color,
+        line=dict(color=aligned_line, width=2),
+        name='Aligned',
+    ))
+    fig.add_trace(go.Scatterpolar(
+        r=antag_vals_c, theta=labels_c,
+        fill='toself', fillcolor='rgba(255,140,0,0.20)',
+        line=dict(color='rgba(255,140,0,0.9)', width=2, dash='dot'),
+        name='Antagonistic',
     ))
     fig.update_layout(
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[-1, 1],           # ← FIX: negative values now visible
+                range=[0, 1],
                 tickfont=dict(size=9),
-                tickvals=[-1, -0.5, 0, 0.5, 1],
+                tickvals=[0, 0.25, 0.5, 0.75, 1],
             ),
-            angularaxis=dict(
-                tickfont=dict(size=11),
-            ),
-            # Pull the chart in slightly so labels have breathing room
+            angularaxis=dict(tickfont=dict(size=11)),
             hole=0.08,
         ),
         height=height,
-        margin=dict(l=80, r=80, t=40, b=80),  # generous margins for label text
-        showlegend=False,
+        margin=dict(l=80, r=80, t=40, b=80),
+        showlegend=True,
+        legend=dict(orientation='h', y=-0.12, font=dict(size=11)),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
     )
-    if title:
-        fig.update_layout(showlegend=True)
     return fig
 
 
 def make_overlay_figure(mat_dict, dharmic_dict, height=520):
-    """Synthesis view: both lenses on a single 8-axis radar."""
+    """Synthesis view: both lenses on a single 8-axis radar, dual-trace per lens."""
     lineage_map = SCHEMA.get("LINEAGE_MAP", {})
 
     def extract(keys, d):
-        labs, vals = [], []
+        labs, aligned, antag = [], [], []
         for k in keys:
+            raw = d.get(k, 0)
             m = lineage_map.get(k.lower(), {})
-            labs.append(m.get("friendly_display", k).replace(" (", "<br>("))
-            vals.append(d.get(k, 0))
-        return labs, vals
+            friendly = m.get("friendly_display", k)
+            label = f"↙ {friendly}<br><i>(Antagonistic)</i>" if raw < 0 else friendly.replace(" (", "<br>(")
+            labs.append(label)
+            aligned.append(max(raw, 0))
+            antag.append(abs(min(raw, 0)))
+        return labs, aligned, antag
 
-    ml, mv = extract(MAT_DIMS, mat_dict)
-    el, ev = extract(DHARMIC_DIMS, dharmic_dict)
+    ml, ma, mx = extract(MAT_DIMS, mat_dict)
+    el, ea, ex = extract(DHARMIC_DIMS, dharmic_dict)
 
     fig = go.Figure()
+    # Materialist aligned
     fig.add_trace(go.Scatterpolar(
-        r=mv + [mv[0]], theta=ml + [ml[0]],
+        r=ma + [ma[0]], theta=ml + [ml[0]],
         fill='toself', fillcolor='rgba(255,80,80,0.2)',
         line=dict(color='rgba(255,80,80,0.9)', width=2),
-        name='Materialist Lens'
+        name='Materialist — Aligned'
     ))
+    # Materialist antagonistic
     fig.add_trace(go.Scatterpolar(
-        r=ev + [ev[0]], theta=el + [el[0]],
+        r=mx + [mx[0]], theta=ml + [ml[0]],
+        fill='toself', fillcolor='rgba(255,140,0,0.15)',
+        line=dict(color='rgba(255,140,0,0.9)', width=2, dash='dot'),
+        name='Materialist — Antagonistic'
+    ))
+    # Dharmic aligned
+    fig.add_trace(go.Scatterpolar(
+        r=ea + [ea[0]], theta=el + [el[0]],
         fill='toself', fillcolor='rgba(80,130,255,0.2)',
         line=dict(color='rgba(80,130,255,0.9)', width=2),
-        name='Dharmic-Essentialist Lens'
+        name='Dharmic — Aligned'
+    ))
+    # Dharmic antagonistic
+    fig.add_trace(go.Scatterpolar(
+        r=ex + [ex[0]], theta=el + [el[0]],
+        fill='toself', fillcolor='rgba(160,80,255,0.15)',
+        line=dict(color='rgba(160,80,255,0.9)', width=2, dash='dot'),
+        name='Dharmic — Antagonistic'
     ))
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(visible=True, range=[-1, 1], tickfont=dict(size=9)),
+            radialaxis=dict(visible=True, range=[0, 1], tickfont=dict(size=9)),
             angularaxis=dict(tickfont=dict(size=11)),
         ),
         height=height,
         margin=dict(l=80, r=80, t=50, b=80),
-        legend=dict(orientation='h', y=-0.15),
+        legend=dict(orientation='h', y=-0.18, font=dict(size=10)),
         paper_bgcolor='rgba(0,0,0,0)',
     )
     return fig
@@ -177,18 +213,18 @@ def get_cached_synthesis(text_content, vector_dict):
 
 def generate_triangulated_meaning(vector_dict, source_context):
     api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key: return "⚠️ API Key Missing."
+    if not api_key:
+        logger.warning("generate_triangulated_meaning: OPENAI_API_KEY not set")
+        return "⚠️ API Key Missing. Set OPENAI_API_KEY in your environment."
     prompt = f"""
-    Topology: {vector_dict}
-    Text: "{source_context[:1000]}"
-    
-    Write from 1 to 3 dense paragraphs, none exceeding 50 words, triangulating the essence of Text above.
-    Use all the philosophical schools represented in Topology to understand Text, and construct a narrative without mentioning the philosophies by name.
-    Be concise, choose density over niceties like saying hello and signing off.
-    Call out friction between the dimensions when you see it, also note alignment and consilience. Be absolutely unbiased.
-    DO NOT list or mention the weights or dimensions given to you, instead weave use the concepts they signify into the narrative. 
-    At the end write an opinionated one-line verdict from Text — for example, is it balanced, fair, biased, or equitable?
-    """
+Topology: {vector_dict}
+Snippet: "{source_context[:1000]}"
+
+Construct a single, dense paragraph triangulating the 'essence' of this text.
+Explain its internal friction using the philosophical schools represented in the topology.
+DO NOT list weights or dimensions by name. Focus on the conceptual synthesis.
+"""
+    logger.info("🤖 Calling GPT-4o for synthesis (snippet len=%d)", len(source_context))
     try:
         client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
         res = client.chat.completions.create(
@@ -369,10 +405,12 @@ elif page == "Sanskrit Non-Translatables":
             lin = SCHEMA.get("LINEAGE_MAP", {})
             rows_disp = []
             for k in DIMS:
+                raw = v_dict[k]
                 rows_disp.append({
                     "Dim": k.upper(),
                     "School": lin.get(k, {}).get("school", "?"),
-                    "Score": f"{v_dict[k]:.3f}",
+                    "Score": f"{raw:+.3f}",
+                    "Polarity": "↙ Antagonistic" if raw < 0 else "▲ Aligned",
                     "Label": lin.get(k, {}).get("friendly_display", ""),
                 })
             st.dataframe(pd.DataFrame(rows_disp), use_container_width=True, hide_index=True)
@@ -394,11 +432,12 @@ elif page == "Sanskrit Non-Translatables":
 elif page == "Admin & Logs":
     st.title("🛠️ Admin & Logs")
 
-    t_db, t_lexicon, t_logs, t_maintenance = st.tabs([
+    t_db, t_lexicon, t_logs, t_maintenance, t_scripts = st.tabs([
         "🗃️ Cache Viewer",
         "📚 Lexicon Browser",
         "📋 Live Log",
-        "⚙️ Maintenance"
+        "⚙️ Maintenance",
+        "🚀 Script Runner",
     ])
 
     # ---- TAB: Cache Viewer ------------------------------------------------
@@ -557,3 +596,100 @@ elif page == "Admin & Logs":
         conn.close()
         st.dataframe(stats, use_container_width=True, hide_index=True)
         st.caption(f"Synthesis cache: {cache_count} entries")
+
+    # ---- TAB: Script Runner -----------------------------------------------
+    with t_scripts:
+        import subprocess, threading, queue, time as _time
+
+        st.markdown("### 🚀 Script Runner")
+        st.caption("Run seeding and ingestion scripts directly. Output streams live below.")
+
+        SCRIPTS = {
+            "engine_db.py — Seed DB from tranche_master (fast, no API)": {
+                "cmd": ["python3", "engine_db.py"],
+                "warn": None,
+            },
+            "agent_expand.py — DRY RUN (preview only, no DB write)": {
+                "cmd": ["python3", "agent_expand.py"],
+                "env_override": {"DRY_RUN": "1"},   # script reads DRY_RUN from source; we patch via sed
+                "warn": None,
+                "dry_patch": True,
+            },
+            "agent_expand.py — LIVE RUN (writes to DB, calls OpenAI API 💰)": {
+                "cmd": ["python3", "agent_expand.py"],
+                "warn": "⚠️ This will call the OpenAI API and WRITE to epistemic_lexicon.db. API costs apply (~$0.10–0.30). Are you sure?",
+                "dry_patch": False,
+            },
+        }
+
+        chosen = st.selectbox("Select script", list(SCRIPTS.keys()))
+        script_cfg = SCRIPTS[chosen]
+
+        if script_cfg["warn"]:
+            st.warning(script_cfg["warn"])
+            confirmed = st.checkbox("Yes, I confirm — run it")
+        else:
+            confirmed = True
+
+        run_btn = st.button("▶️ Run", disabled=not confirmed)
+        log_area = st.empty()
+
+        if run_btn:
+            import os as _os
+            env = _os.environ.copy()
+
+            # For dry-run variant: patch DRY_RUN=True in agent_expand.py via a temp copy
+            script_path = script_cfg["cmd"][1]
+            run_cmd = list(script_cfg["cmd"])
+
+            if script_cfg.get("dry_patch") is True:
+                # Create a temp patched copy with DRY_RUN = True guaranteed
+                with open(script_path) as f:
+                    src = f.read()
+                patched = src.replace("DRY_RUN = False", "DRY_RUN = True")
+                tmp_path = "_tmp_dry_run.py"
+                with open(tmp_path, "w") as f:
+                    f.write(patched)
+                run_cmd = ["python3", tmp_path]
+            elif script_cfg.get("dry_patch") is False:
+                # Live run: patch DRY_RUN = False guaranteed
+                with open(script_path) as f:
+                    src = f.read()
+                patched = src.replace("DRY_RUN = True", "DRY_RUN = False")
+                tmp_path = "_tmp_live_run.py"
+                with open(tmp_path, "w") as f:
+                    f.write(patched)
+                run_cmd = ["python3", tmp_path]
+
+            logger.info("🚀 Admin launched script: %s", " ".join(run_cmd))
+            output_lines = []
+
+            try:
+                proc = subprocess.Popen(
+                    run_cmd,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    text=True, bufsize=1,
+                    cwd=_os.path.dirname(_os.path.abspath(__file__)) or "."
+                )
+                for line in proc.stdout:
+                    line = line.rstrip()
+                    output_lines.append(line)
+                    logger.info("[script] %s", line)
+                    # Stream last 60 lines live
+                    log_area.code("\n".join(output_lines[-60:]), language="")
+                proc.wait()
+                rc = proc.returncode
+                if rc == 0:
+                    st.success(f"✅ Script finished (exit 0)")
+                    logger.info("✅ Script exited cleanly")
+                else:
+                    st.error(f"❌ Script exited with code {rc}")
+                    logger.error("Script exited %d", rc)
+            except Exception as e:
+                st.error(f"Failed to launch: {e}")
+                logger.error("Script launch error: %s", e)
+            finally:
+                # Clean up temp files
+                for tmp in ["_tmp_dry_run.py", "_tmp_live_run.py"]:
+                    if _os.path.exists(tmp):
+                        _os.remove(tmp)

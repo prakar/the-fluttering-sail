@@ -8,9 +8,471 @@
     "Comparative_Cosmology_Parallels": "hyle, prime matter, telos, potency, actus purus, wuji, ziran, de, taiji, qi, tian, yin, yang, apophatic void"
   },
   "THEMATIC_ALIGNMENT_MAP": {
-    "asat_sat": ["sat", "asat", "existence", "non-existence", "being"],
-    "kama_manas": ["kama", "desire", "seed of mind", "manas"],
-    "svadha_prayati": ["svadha", "creative energy", "vital force", "prayati"],
-    "adhyaksha": ["adhyaksha", "overseer", "witness", "highest heaven"]
+    "saguna": [
+      "saguna",
+      "manifested form",
+      "attributed absolute",
+      "qualified godhead",
+      "anthropomorphic representation"
+    ],
+    "nirguna": [
+      "nirguna",
+      "formless absolute",
+      "unattributed reality",
+      "apophatic void",
+      "abstract divine"
+    ],
+    "atma": [
+      "atma",
+      "soul",
+      "individual ego",
+      "psychological self",
+      "transcendent witness"
+    ],
+    "maya": [
+      "maya",
+      "illusion",
+      "magic trick",
+      "cosmic delusion",
+      "phenomenal matrix"
+    ],
+    "jiva": [
+      "jiva",
+      "embodied soul",
+      "living entity",
+      "biological life unit",
+      "monad"
+    ],
+    "kaivalya": [
+      "kaivalya",
+      "absolute isolation",
+      "detachment",
+      "final liberation",
+      "aloneness"
+    ],
+    "om": [
+      "om",
+      "primordial vibration",
+      "sacred syllable",
+      "cosmic hum",
+      "logos"
+    ],
+    "shakti": [
+      "shakti",
+      "energy",
+      "kinetic power",
+      "cosmic dynamism",
+      "feminine force"
+    ],
+    "prakriti": [
+      "prakriti",
+      "prime matter",
+      "nature",
+      "matrix",
+      "material cause"
+    ],
+    "akasha": [
+      "akasha",
+      "ether",
+      "space",
+      "void",
+      "quintessence"
+    ],
+    "agni": [
+      "agni",
+      "fire",
+      "sacred combustion",
+      "elemental heat",
+      "sacrificial conduit"
+    ],
+    "vayu": [
+      "vayu",
+      "wind",
+      "air element",
+      "atmospheric force",
+      "gaseous state"
+    ],
+    "shabda": [
+      "shabda",
+      "sound",
+      "verbal testimony",
+      "acoustic revelation",
+      "epistemic word"
+    ],
+    "indriya": [
+      "indriya",
+      "senses",
+      "sensory organs",
+      "appetites",
+      "perceptual instruments"
+    ],
+    "loka": [
+      "loka",
+      "world",
+      "realm",
+      "dimension of experience",
+      "plane of existence"
+    ],
+    "svarga": [
+      "svarga",
+      "heaven",
+      "paradise",
+      "hedonistic afterworld",
+      "realm of rewards"
+    ],
+    "naraka": [
+      "naraka",
+      "hell",
+      "purgatory",
+      "place of torment",
+      "negative baseline"
+    ],
+    "asura": [
+      "asura",
+      "demon",
+      "titan",
+      "anti-god",
+      "ego-driven force"
+    ],
+    "devata": [
+      "devata",
+      "deity",
+      "god",
+      "polytheistic entity",
+      "cosmic archetype"
+    ],
+    "sukshma sharira": [
+      "sukshma sharira",
+      "astral body",
+      "subtle body",
+      "etheric double",
+      "psyche matrix"
+    ],
+    "manas": [
+      "manas",
+      "lower mind",
+      "sensory coordinator",
+      "instinctive brain",
+      "linear thought"
+    ],
+    "buddhi": [
+      "buddhi",
+      "intellect",
+      "rational faculty",
+      "discerning intellect",
+      "judgment"
+    ],
+    "chitta": [
+      "chitta",
+      "subconscious mind",
+      "memory storage",
+      "psyche bank",
+      "mind-stuff"
+    ],
+    "ahankara": [
+      "ahankara",
+      "ego",
+      "i-ness",
+      "individuation principle",
+      "identity attachment"
+    ],
+    "ahimsa": [
+      "ahimsa",
+      "non-violence",
+      "pacifism",
+      "harmlessness",
+      "passive resistance"
+    ],
+    "prana": [
+      "prana",
+      "vital breath",
+      "life force",
+      "bio-energy",
+      "chi"
+    ],
+    "chakra": [
+      "chakra",
+      "energy vortex",
+      "plexus",
+      "spiritual wheel",
+      "psychic center"
+    ],
+    "dhyana": [
+      "dhyana",
+      "meditation",
+      "contemplation",
+      "mindfulness",
+      "focused attention"
+    ],
+    "samadhi": [
+      "samadhi",
+      "trance",
+      "enstasy",
+      "absorption",
+      "cognitive dissolution"
+    ],
+    "sadhana": [
+      "sadhana",
+      "spiritual practice",
+      "discipline",
+      "exercise",
+      "methodology"
+    ],
+    "puja": [
+      "puja",
+      "ritual worship",
+      "idolatry reduction",
+      "ceremony",
+      "altar offering"
+    ],
+    "karma-yoga": [
+      "karma-yoga",
+      "selfless action",
+      "work ethics",
+      "duty without attachment",
+      "altruism"
+    ],
+    "jnana-yoga": [
+      "jnana-yoga",
+      "path of knowledge",
+      "intellectual gnosticism",
+      "rational discrimination",
+      "philosophy"
+    ],
+    "bhakti-yoga": [
+      "bhakti-yoga",
+      "path of devotion",
+      "religious worship",
+      "emotional piety",
+      "theism"
+    ],
+    "shastra": [
+      "shastra",
+      "scripture",
+      "authoritative treatise",
+      "canon",
+      "legalistic text"
+    ],
+    "shruti": [
+      "shruti",
+      "revelation",
+      "heard scripture",
+      "canonical text",
+      "inerrant word"
+    ],
+    "itihasa": [
+      "itihasa",
+      "command epic",
+      "history",
+      "mythology",
+      "chronicle",
+      "historical narrative"
+    ],
+    "purana": [
+      "purana",
+      "mythology",
+      "ancient lore",
+      "allegory",
+      "fables"
+    ],
+    "tantra": [
+      "tantra",
+      "esotericism",
+      "occult ritual",
+      "sexual mysticism reduction",
+      "technique canon"
+    ],
+    "guna": [
+      "guna",
+      "strand",
+      "quality",
+      "material attribute",
+      "psychological type"
+    ],
+    "samskara": [
+      "samskara",
+      "impression",
+      "archetype",
+      "subconscious trace",
+      "sacrament"
+    ],
+    "hanuman": [
+      "hanuman",
+      "monkey god abstraction",
+      "devoted servant archetype",
+      "theriomorphic deity",
+      "allegorical force"
+    ],
+    "sanskriti": [
+      "sanskriti",
+      "culture",
+      "civilization",
+      "refined heritage",
+      "tradition"
+    ],
+    "agma": [
+      "agma",
+      "sectarian canon",
+      "tradition",
+      "revealed manual",
+      "ritual liturgy"
+    ],
+    "naga": [
+      "naga",
+      "serpent entity",
+      "naked ascetic class",
+      "mythic reptile",
+      "subterranean guardian"
+    ],
+    "dasa": [
+      "dasa",
+      "servant",
+      "slave",
+      "subordinate",
+      "bonded laborer"
+    ],
+    "seva": [
+      "seva",
+      "service",
+      "charity",
+      "volunteer work",
+      "altruistic labor"
+    ],
+    "guru": [
+      "guru",
+      "teacher",
+      "mentor",
+      "spiritual expert",
+      "dispeller of darkness"
+    ],
+    "shraddha": [
+      "shraddha",
+      "faith",
+      "blind belief reduction",
+      "conviction",
+      "earnestness"
+    ],
+    "kavya": [
+      "kavya",
+      "poetry",
+      "literature",
+      "aesthetic verse",
+      "belles-lettres"
+    ],
+    "kama": [
+      "kama",
+      "lust",
+      "sensual pleasure",
+      "eroticism",
+      "desire"
+    ],
+    "bhava": [
+      "bhava",
+      "becoming",
+      "emotional state",
+      "sentiment",
+      "feeling"
+    ],
+    "rasa": [
+      "rasa",
+      "juice",
+      "aesthetic essence",
+      "taste",
+      "flavor profile"
+    ],
+    "prema": [
+      "prema",
+      "divine love",
+      "romantic attachment reduction",
+      "affection",
+      "devotional ecstasy"
+    ],
+    "leela": [
+      "leela",
+      "play",
+      "sport",
+      "cosmic drama",
+      "divine whim"
+    ],
+    "ananda": [
+      "ananda",
+      "bliss",
+      "pleasure",
+      "hedonic happiness",
+      "joy"
+    ],
+    "salila": [
+      "salila",
+      "primordial water",
+      "liquid element",
+      "fluid matter",
+      "chaos flow"
+    ],
+    "tapas": [
+      "tapas",
+      "heat",
+      "austerity",
+      "ascetic penance",
+      "mortification"
+    ],
+    "abhu": [
+      "abhu",
+      "unmanifest void",
+      "primordial mass",
+      "potential being",
+      "formless entity"
+    ],
+    "asat_sat": [
+      "asat_sat",
+      "being and non-being",
+      "ontological paradox",
+      "sat asat",
+      "existence non-existence"
+    ],
+    "kama_manas": [
+      "kama_manas",
+      "desire mind",
+      "sensory desire",
+      "kama manas"
+    ],
+    "svadha_prayati": [
+      "svadha_prayati",
+      "innate tendency",
+      "self-propelled",
+      "svadha prayati"
+    ],
+    "adhyaksha": [
+      "adhyaksha",
+      "overseer",
+      "witness",
+      "cosmic observer",
+      "superintendent"
+    ],
+    "svadha": [
+      "svadha",
+      "inherent nature",
+      "self-power",
+      "innate impulse"
+    ],
+    "prayati": [
+      "prayati",
+      "striving",
+      "effort",
+      "self-propulsion"
+    ],
+    "sat": [
+      "sat",
+      "being",
+      "existence",
+      "truth",
+      "pure being"
+    ],
+    "asat": [
+      "asat",
+      "non-being",
+      "non-existence",
+      "void",
+      "primordial nothing"
+    ]
   }
 }
