@@ -23,7 +23,7 @@ import logging
 from typing import Dict, List, Tuple, Optional
 
 # --- 1. RUNTIME CONTROLS ---
-DRY_RUN = True   # ← set False to write to disk for real
+DRY_RUN = False   # ← set True to not affect disk and only see CLI
 
 DB_NAME         = "epistemic_lexicon.db"
 WEIGHTS_FILE    = "weights.json"
