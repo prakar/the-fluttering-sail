@@ -412,7 +412,7 @@ Text: "{source_context[:1000]}"
 
 Produce 1–3 concise paragraphs of less than 50 words each, triangulating the essence of Text using the filters given in Topology.
 DO NOT mention weights or dimensions by name, give a conceptual synthesis.
-Write a a one-line verdict of Text starting with its synthesized meaning, followed by the Topology-influenced, triangulated synthesis of Text.
+Write a one-line verdict starting with a synthesized meaning of Text, followed by a Topology-influenced triangulation.
 """
     logger.info("🤖 Calling GPT-4o for synthesis (snippet len=%d)", len(source_context))
     try:
