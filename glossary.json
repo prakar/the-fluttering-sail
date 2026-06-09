@@ -1,0 +1,65 @@
+{
+  "__meta__": {
+    "description": "The Fluttering Sail — Diagnostic Glossary",
+    "version": "1.0",
+    "note": "Content for the five diagnostic condition modals. Each entry has four fields: name, icon, plain_english, when_right, for_practitioners. Edit this file to update modal content without touching Python."
+  },
+
+  "nyaya_meta_condition": {
+    "name": "Nyaya Meta-Condition",
+    "icon": "🔷",
+    "plain_english": "Your writing holds multiple values in tension simultaneously — fairness and power, purpose and practicality, individual and cosmic. No single value dominates; all are present and engaged. It neither pushes nor pulls in any one direction.",
+    "when_right": "Public policy documents, educational curricula, journalistic analysis, mediation frameworks, foundational constitutions. Anywhere that multiple stakeholders with different values must all find their concerns acknowledged. A text that satisfies everyone rarely moves anyone urgently — that trade-off is sometimes exactly correct.",
+    "for_practitioners": "A teacher writing a syllabus, a mediator drafting a settlement framework, a journalist covering a contested issue — these should aspire toward Nyaya. If you're building a broad, trust-based audience across political or cultural divides, Nyaya is your north star. Content creators: high Nyaya tends toward low mobilisation. That's not a flaw — it's a choice about what you want your writing to do.",
+    "dimension_note": "σ (how evenly distributed) and μ (how philosophically engaged) are both measured here. Low σ means balance; high μ means substance. A text can be perfectly balanced but philosophically empty — Nyaya requires both."
+  },
+
+  "purushartha_equilibrium": {
+    "name": "Purushartha Equilibrium",
+    "icon": "🪷",
+    "plain_english": "Your writing simultaneously expresses fairness, practical utility, cosmic or natural order, and principled structure — the four classical aims of a complete human life, present together. These four things rarely coexist. Most writing sacrifices one for another.",
+    "when_right": "Founding documents, transformative manifestos, visionary leadership communications, organisational charters that will outlast their authors. This is the hardest condition to approach and the most durable when achieved. The Constitution of India and the Gettysburg Address both approach this territory.",
+    "for_practitioners": "A startup founder writing a company mission, an NGO articulating a theory of change, a political leader writing an inaugural address — proximity to Purushartha indicates writing that will be remembered. If you're an entrepreneur, this separates a living mission from a values poster. If you're writing for social change, this is what earning your ambition looks like.",
+    "dimension_note": "Named for the classical Indian framework of four life aims: Dharma (cosmic order), Artha (material prosperity), Kāma (desire and fulfilment), and Mokṣa (liberation). The framework operationalises this as simultaneous high scores on Fairness, Utility, Dharma, and Structure."
+  },
+
+  "baconian_collapse": {
+    "name": "Baconian Collapse",
+    "icon": "⚙️",
+    "plain_english": "Your writing is optimising. It measures, scales, allocates, and extracts. It is precise about means and silent about ends. This is a specific kind of precision — not a failure, but a deliberate narrowing of focus to what is measurable and deliverable.",
+    "when_right": "Technical specifications, operational procedures, performance frameworks, financial models, engineering documentation, growth strategy. Anywhere the task is to maximise a well-defined metric within a well-understood system. A factory safety checklist should score high on Baconian — it is not the place for philosophical nuance.",
+    "for_practitioners": "A product manager writing a sprint specification, a marketer writing a conversion-optimised landing page, an analyst writing a performance review — these are legitimately Baconian tasks. The useful question is whether this register is intentional and appropriate, or whether purpose has quietly left the building. A brand that speaks only in metrics will eventually feel hollow to customers who were looking for meaning.",
+    "dimension_note": "Named for Francis Bacon's philosophical programme of treating nature as a resource to be measured, classified, and exploited for human ends. High Utility with near-zero Telos and Structure is the geometric signature: throughput without purpose or principled constraint."
+  },
+
+  "mimetic_shear": {
+    "name": "Mimetic Shear",
+    "icon": "⚔️",
+    "plain_english": "Your writing thinks in terms of sides, stakes, and strength. It mobilises, it challenges, it names an adversary. It is comfortable with conflict as a productive force and does not ask both sides to feel equally seen.",
+    "when_right": "Political campaigns, labour organising, competitive positioning, crisis communications, activist manifestos, competitive sports commentary. Anywhere the situation is genuinely adversarial and your audience needs to be moved to action rather than balanced into reflection. The framework is not suggesting this posture is wrong — it is describing what the text is doing.",
+    "for_practitioners": "A political copywriter, a union organiser, a competitive strategist, a protest leader — these roles require Mimetic fluency. The useful question is whether your audience expects this energy and whether the conflict you're naming is real. High Mimetic Shear in a corporate team communication, a classroom, or a customer service script is probably a mismatch. In a campaign launch or a competitive pitch, it may be exactly right.",
+    "dimension_note": "Named for René Girard's theory that human desire and conflict are fundamentally imitative — we want what others want, and rivalry is the engine of social organisation. High Power with collapsed Fairness, Dharma, and Non-Dual Consciousness is the geometric signature: strategic force without ethical grounding."
+  },
+
+  "ascetic_drift": {
+    "name": "Ascetic Drift",
+    "icon": "🌫️",
+    "plain_english": "Your writing is concerned with what lies beyond the measurable. It speaks to stillness, essence, and a reality that transcends social and material categories. It is not indifferent to the world — it is pointing past it.",
+    "when_right": "Contemplative literature, spiritual guidance, meditation instruction, philosophy of mind, poetry, end-of-life care frameworks, certain therapeutic contexts. Anywhere the task is to orient a person toward their own interiority rather than toward external action. A yoga teacher writing a class description, a therapist writing patient-facing materials, a poet — this is not a warning here, it is a description of appropriate register.",
+    "for_practitioners": "The caution arises when civic or institutional writing drifts toward this posture without awareness: a governance document that speaks only of purpose and consciousness without any commitment to fairness or structure has abandoned its audience. A wellness brand that uses transcendent vocabulary to avoid accountability is a different matter entirely from a meditation guide that uses it truthfully. Know which one you are writing.",
+    "dimension_note": "High Non-Dual Consciousness (c) and Telos (t) with collapsed Utility and Fairness is the geometric signature. The most extreme case in the Calibration Ten is the Vivekachudamani — its low mean magnitude (μ=0.230 despite 34 matches) is correct: a text about the dissolution of the self into Brahman should approach the edges of the framework's measurement space."
+  },
+
+  "dimensions": {
+    "utility":   { "code": "u", "plain": "Does this text care about real-world outcomes and effects on people's lives?" },
+    "fairness":  { "code": "f", "plain": "Does this text care about equal treatment, just process, and procedural integrity?" },
+    "power":     { "code": "p", "plain": "Does this text think strategically about force, leverage, and competitive position?" },
+    "mimetic":   { "code": "m", "plain": "Does this text engage with rivalry, social imitation, and conflict as driving forces?" },
+    "telos":     { "code": "t", "plain": "Does this text have a sense of direction, purpose, and the end it is working toward?" },
+    "structure": { "code": "s", "plain": "Does this text operate from rules, duty, and principled constraint?" },
+    "dharma":    { "code": "d", "plain": "Does this text align with a sense of natural, cosmic, or ecological order?" },
+    "nondual":   { "code": "c", "plain": "Does this text see connection and unity, or does it draw hard lines between self and other?" }
+  },
+
+  "antagonistic_note": "A negative score doesn't mean absence — it means active opposition. A text that scores antagonistic on Fairness isn't merely indifferent to justice; it is organised around its negation. The dotted line on the radar is the framework's way of saying: this text is not neutral here."
+}

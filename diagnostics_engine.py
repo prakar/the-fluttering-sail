@@ -35,6 +35,38 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# 0. GLOSSARY LOADING
+# ---------------------------------------------------------------------------
+_GLOSSARY_FILE = "glossary.json"
+_GLOSSARY: dict = {}
+
+def _load_glossary() -> dict:
+    if not os.path.exists(_GLOSSARY_FILE):
+        logger.warning("⚠️  %s not found — diagnostic glossary modals disabled", _GLOSSARY_FILE)
+        return {}
+    try:
+        with open(_GLOSSARY_FILE) as f:
+            data = json.load(f)
+        result = {k: v for k, v in data.items() if not k.startswith("__")}
+        logger.info("✅ Glossary loaded — %d entries", len(result))
+        return result
+    except Exception as exc:
+        logger.error("❌ Failed to parse %s: %s", _GLOSSARY_FILE, exc)
+        return {}
+
+_GLOSSARY = _load_glossary()
+
+# Map condition name → glossary key
+_CONDITION_KEYS = {
+    "Nyaya Meta-Condition":       "nyaya_meta_condition",
+    "Purushartha Equilibrium":    "purushartha_equilibrium",
+    "Baconian Collapse":          "baconian_collapse",
+    "Mimetic Shear":              "mimetic_shear",
+    "Ascetic Drift":              "ascetic_drift",
+}
+
+
+# ---------------------------------------------------------------------------
 # 1. THRESHOLD LOADING
 # ---------------------------------------------------------------------------
 _DIAGNOSTICS_FILE = "diagnostics.json"
@@ -314,60 +346,6 @@ def compute_proximity(avg: dict) -> list:
     return sorted(meters, key=lambda x: x["pct"], reverse=True)
 
 
-def render_proximity_meters(avg: dict) -> None:
-    """
-    Render VU-style proximity bars for all five diagnostic conditions.
-    Shows how close the text is to each condition as a percentage.
-    Fully triggered conditions (pct >= 100) render as alert banners.
-    """
-    meters = compute_proximity(avg)
-    if not meters:
-        return
-
-    st.markdown("---")
-    st.markdown("### 🔬 Diagnostic Proximity")
-    st.caption(
-        "How close is this text to each ethical condition? "
-        "100% = threshold met. Bars show directional proximity — "
-        "canonical texts rarely reach 100% on a single condition; "
-        "the framework is most informative when read comparatively."
-    )
-
-    # Check for full triggers to show as banners
-    full_alerts = run_diagnostics(avg)
-    triggered_names = {a["name"] for a in full_alerts}
-
-    for m in meters:
-        pct   = m["pct"]
-        col   = m["colour"]
-        fired = m["name"] in triggered_names
-
-        if fired:
-            # Full trigger — banner + meter
-            fn = {"Baconian Collapse": st.error, "Mimetic Shear": st.error,
-                  "Ascetic Drift": st.warning}.get(m["name"],
-                  st.success if m["name"] == "Purushartha Equilibrium" else st.info)
-            fn(f"{m['icon']} **{m['name']} — TRIGGERED**")
-
-        # VU-style bar
-        bar_pct = min(pct, 100)
-        label_colour = col if pct >= 70 else "#888"
-        st.markdown(
-            f"""<div style="margin:6px 0 10px 0">
-              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
-                <span style="font-size:13px;color:#ccc">{m['icon']} {m['name']}</span>
-                <span style="font-size:15px;font-weight:700;color:{label_colour}">{pct}%</span>
-              </div>
-              <div style="background:#2a2a3e;border-radius:4px;height:10px;width:100%;position:relative">
-                <div style="background:{col};border-radius:4px;height:10px;width:{bar_pct}%;
-                     {'box-shadow:0 0 8px ' + col if pct >= 90 else ''}"></div>
-              </div>
-              <div style="font-size:11px;color:#666;margin-top:2px">{m['detail']}</div>
-            </div>""",
-            unsafe_allow_html=True
-        )
-    logger.info("📊 Proximity meters rendered — top: %s at %d%%",
-                meters[0]["name"], meters[0]["pct"])
 
 # Ordered list of evaluator functions — add new conditions here
 _EVALUATORS = [
@@ -436,3 +414,111 @@ def render_diagnostics(alerts: list) -> None:
         render_fn = _level_map.get(alert["level"], st.info)
         render_fn(f"{alert['icon']} **{alert['headline']}**\n\n{alert['detail']}")
         logger.info("🖥️  Rendered diagnostic banner: %s", alert["name"])
+
+def _make_dialog(key: str):
+    """
+    Return a st.dialog-decorated function for the given glossary key.
+    st.dialog handles overlay, X button, click-away, and single-modal
+    enforcement natively — no HTML, no JS, no session state needed.
+    """
+    entry = _GLOSSARY.get(key, {})
+    name  = entry.get("name", key)
+    icon  = entry.get("icon", "\u2139\ufe0f")
+    plain = entry.get("plain_english", "")
+    when  = entry.get("when_right", "")
+    prac  = entry.get("for_practitioners", "")
+    dnote = entry.get("dimension_note", "")
+
+    @st.dialog(f"{icon} {name}")
+    def _dialog():
+        st.markdown("**In plain English**")
+        st.markdown(plain)
+        st.markdown("**When this is the right posture**")
+        st.markdown(when)
+        st.markdown("**For practitioners**")
+        st.markdown(prac)
+        if dnote:
+            with st.expander("Framework note"):
+                st.caption(dnote)
+
+    return _dialog
+
+
+# Pre-build one dialog function per condition at module load time.
+# st.dialog must be defined at module level — not inside loops or conditionals.
+_DIALOGS: dict = {
+    key: _make_dialog(key)
+    for key in _CONDITION_KEYS.values()
+    if key in _GLOSSARY
+}
+
+
+def render_proximity_meters(avg: dict) -> None:
+    """
+    Render VU-style proximity bars for all five diagnostic conditions.
+    Each bar has a ? button that opens a st.dialog modal.
+    st.dialog enforces single-modal-at-a-time natively — no session state needed.
+    """
+    meters = compute_proximity(avg)
+    if not meters:
+        return
+
+    st.markdown("---")
+    st.markdown("### \U0001f52c Diagnostic Proximity")
+    st.caption(
+        "How close is this text to each ethical condition? "
+        "100% = threshold met. Bars show directional proximity — "
+        "canonical texts rarely reach 100% on a single condition; "
+        "the framework is most informative when read comparatively."
+    )
+
+    full_alerts = run_diagnostics(avg)
+    triggered_names = {a["name"] for a in full_alerts}
+
+    for m in meters:
+        pct   = m["pct"]
+        col   = m["colour"]
+        fired = m["name"] in triggered_names
+        gkey  = _CONDITION_KEYS.get(m["name"])
+
+        if fired:
+            fn = {"Baconian Collapse": st.error, "Mimetic Shear": st.error,
+                  "Ascetic Drift": st.warning}.get(
+                  m["name"],
+                  st.success if m["name"] == "Purushartha Equilibrium" else st.info)
+            fn(f"{m['icon']} **{m['name']} — TRIGGERED**")
+
+        bar_col, btn_col = st.columns([20, 1])
+        bar_pct      = min(pct, 100)
+        label_colour = col if pct >= 70 else "#888"
+
+        with bar_col:
+            st.markdown(
+                f"""<div style="margin:6px 0 10px 0">
+                  <div style="display:flex;justify-content:space-between;
+                       align-items:baseline;margin-bottom:3px">
+                    <span style="font-size:13px;color:#ccc">{m['icon']} {m['name']}</span>
+                    <span style="font-size:15px;font-weight:700;
+                         color:{label_colour}">{pct}%</span>
+                  </div>
+                  <div style="background:#2a2a3e;border-radius:4px;
+                       height:10px;width:100%;position:relative">
+                    <div style="background:{col};border-radius:4px;height:10px;
+                         width:{bar_pct}%;{'box-shadow:0 0 8px '+col if pct>=90 else ''}">
+                    </div>
+                  </div>
+                  <div style="font-size:11px;color:#666;margin-top:2px">
+                    {m['detail']}
+                  </div>
+                </div>""",
+                unsafe_allow_html=True
+            )
+
+        with btn_col:
+            if gkey and gkey in _DIALOGS:
+                if st.button("?", key=f"glossary_btn_{gkey}",
+                             help=f"About {m['name']}"):
+                    _DIALOGS[gkey]()
+
+    logger.info("\U0001f4ca Proximity meters rendered — top: %s at %d%%",
+                meters[0]["name"], meters[0]["pct"])
