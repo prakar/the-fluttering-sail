@@ -1230,3 +1230,5 @@ elif page == "Admin & Logs":
 elif page == "Home":
     from home import render_home
     render_home()
+
+    

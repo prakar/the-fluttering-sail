@@ -522,3 +522,4 @@ def render_proximity_meters(avg: dict) -> None:
 
     logger.info("\U0001f4ca Proximity meters rendered — top: %s at %d%%",
                 meters[0]["name"], meters[0]["pct"])
+                
