@@ -529,32 +529,45 @@ if st.session_state['onboarded'] == 'tour':
 
 # ── MAIN APP (onboarded == 'direct') ─────────────────────────────────────────
 
-page = st.sidebar.selectbox("Navigation", ["Main Analysis", "Sanskrit Non-Translatables", "Admin & Logs", "Home"])
+page_options = ["Main Analysis", "Sanskrit Non-Translatables", "Admin & Logs", "Home"]
+_override = st.session_state.pop('_page_override', None)
+_default_idx = page_options.index(_override) if _override in page_options else 0
+page = st.sidebar.selectbox("Navigation", page_options, index=_default_idx)
 
 # ===========================================================================
 # PAGE: MAIN ANALYSIS
 # ===========================================================================
 if page == "Main Analysis":
-    # Build dropdown: 10 canonical + "Custom Text..."
-    # Linked texts appear as persistent sidebar buttons — always visible
+    # Dropdown: 10 canonical only — Custom Text is a separate mode, not a corpus
     main_keys      = [k for k in CORPORA.keys() if not k.startswith("__")]
     LINKED_CORPORA = load_linked_corpora()
-    dropdown_options = main_keys + ["Custom Text..."]
 
-    choice = st.sidebar.selectbox("Canonical Texts", dropdown_options)
+    choice = st.sidebar.selectbox("Canonical Texts", main_keys)
 
-    # Source card — immediately under dropdown, before linked texts section
-    if choice not in ["Custom Text..."] and choice in CORPORA:
+    # Source card — immediately under dropdown
+    if choice in CORPORA:
         _src = CORPORA[choice].get("source", "")
         st.sidebar.markdown(
             f"""<div style="background:#1e2a3a;border-left:3px solid #4a90d9;
-                padding:10px 14px;border-radius:4px;margin:4px 0 8px 0">
+                padding:10px 14px;border-radius:4px;margin:4px 0 4px 0">
                 <span style="color:#7ab3e0;font-size:11px;font-weight:600;
                 text-transform:uppercase;letter-spacing:0.08em">Source</span><br>
                 <span style="color:#e8f0f8;font-size:14px;font-weight:500">{_src}</span>
             </div>""",
             unsafe_allow_html=True
         )
+
+    # Custom Text — evergreen button, orthogonal to canonical dropdown
+    st.sidebar.markdown("<div style='margin-top:10px'></div>", unsafe_allow_html=True)
+    if st.sidebar.button("✏️  Show Custom Text Area", key="custom_text_btn",
+                         help="Analyse your own passage",
+                         width="stretch"):
+        st.session_state['custom_mode'] = True
+        st.session_state.pop('linked_choice', None)
+        st.session_state.pop('custom_ran', None)
+        st.session_state.pop('custom_text', None)
+        st.session_state.pop('synth_active', None)
+    st.sidebar.markdown("<div style='margin-bottom:4px'></div>", unsafe_allow_html=True)
 
     # --- Persistent Linked Texts section in sidebar ---
     if LINKED_CORPORA:
@@ -568,7 +581,7 @@ if page == "Main Analysis":
         for lt_name in LINKED_CORPORA:
             if st.sidebar.button(lt_name, key=f"lt_{lt_name}", width="stretch"):
                 st.session_state['linked_choice'] = lt_name
-                # Clear any active synthesis state when switching texts
+                st.session_state.pop('custom_mode', None)
                 st.session_state.pop('synth_active', None)
 
     # --- Resolve what to display ---
@@ -577,15 +590,42 @@ if page == "Main Analysis":
     active_title = ""
 
     linked_choice = st.session_state.get('linked_choice')
+    custom_mode   = st.session_state.get('custom_mode', False)
 
-    # A linked text button takes priority unless user explicitly chose a canonical or custom
-    # Clicking the main dropdown clears the linked choice
+    # Changing the canonical dropdown clears linked and custom modes
     if choice != st.session_state.get('_last_dropdown_choice'):
         st.session_state.pop('linked_choice', None)
+        st.session_state.pop('custom_mode', None)
+        st.session_state.pop('custom_ran', None)
+        st.session_state.pop('custom_text', None)
         linked_choice = None
+        custom_mode   = False
     st.session_state['_last_dropdown_choice'] = choice
 
-    if linked_choice and linked_choice in LINKED_CORPORA:
+    if custom_mode:
+        # --- CUSTOM TEXT VIEW ---
+        st.session_state.pop('linked_choice', None)
+        active_title = '⛵ The Fluttering Sail — Custom Analysis'
+        st.title(active_title)
+        input_text = st.sidebar.text_area(
+            "Paste any passage:",
+            height=300,
+            placeholder="Paste a speech, mission statement, policy document...",
+            value=st.session_state.get('custom_text', ''),
+        )
+        source_name = "Custom"
+        analyse_btn = st.sidebar.button("🔍 Analyse", type="primary")
+        if analyse_btn:
+            st.session_state['custom_text'] = input_text
+            st.session_state['custom_ran'] = True
+        elif st.session_state.get('custom_ran') and st.session_state.get('custom_text'):
+            input_text = st.session_state['custom_text']
+        else:
+            input_text = ""
+            if not st.session_state.get('custom_ran'):
+                st.info("Paste a passage in the sidebar and click **Analyse** to begin.")
+
+    elif linked_choice and linked_choice in LINKED_CORPORA:
         # --- LINKED TEXT VIEW ---
         lt_data     = LINKED_CORPORA[linked_choice]
         input_text  = lt_data.get("text", "")
@@ -603,31 +643,6 @@ if page == "Main Analysis":
         )
         st.sidebar.markdown("**Text:**")
         st.sidebar.markdown(input_text)
-
-    elif choice == "Custom Text...":
-        # --- CUSTOM TEXT VIEW ---
-        st.session_state.pop('linked_choice', None)
-        active_title = '⛵ The Fluttering Sail — Custom Analysis'
-        st.title(active_title)
-        input_text = st.sidebar.text_area(
-            "Paste any passage:",
-            height=300,
-            placeholder="Paste a speech, mission statement, policy document...",
-            value=st.session_state.get('custom_text', ''),
-        )
-        source_name = "Custom"
-        analyse_btn = st.sidebar.button("🔍 Analyse", type="primary")
-        if analyse_btn:
-            # Persist text so it survives st.rerun() calls (e.g. Synthesize button)
-            st.session_state['custom_text'] = input_text
-            st.session_state['custom_ran'] = True
-        elif st.session_state.get('custom_ran') and st.session_state.get('custom_text'):
-            # Rerun after Synthesize/De-merge — restore persisted text
-            input_text = st.session_state['custom_text']
-        else:
-            input_text = ""
-            if not st.session_state.get('custom_ran'):
-                st.info("Paste a passage in the sidebar and click **Analyse** to begin.")
 
     else:
         # --- CANONICAL CORPUS VIEW ---
@@ -1211,6 +1226,7 @@ elif page == "Admin & Logs":
                 for tmp in ["_tmp_dry_run.py", "_tmp_live_run.py"]:
                     if _os.path.exists(tmp):
                         _os.remove(tmp)
+
 elif page == "Home":
     from home import render_home
     render_home()
