@@ -114,9 +114,9 @@ if os.path.exists(_LLM_CONFIG_FILE):
     logger.info("✅ LLM config: provider=%s base_url=%s key_var=%s",
                 _LLM_CFG.get("provider"), _LLM_CFG.get("base_url"), _LLM_CFG.get("api_key_env_var"))
 else:
-    logger.warning("⚠️ llm_config.json not found — synthesis will fall back to LLM_API_KEY env var + default endpoint")
+    logger.warning("⚠️  llm_config.json not found — synthesis will fall back to LLM_API_KEY env var + default endpoint")
 
-LLM_KEY_ENV_VAR = _LLM_CFG.get("api_key_env_var", "OPENAI_API_KEY") # fallback if llm_config.json absent
+LLM_KEY_ENV_VAR = _LLM_CFG.get("api_key_env_var", "OPENAI_API_KEY")  # fallback if llm_config.json absent
 LLM_BASE_URL    = _LLM_CFG.get("base_url", "https://api.openai.com/v1")
 
 # ---------------------------------------------------------------------------
@@ -512,7 +512,24 @@ def load_all_nontranslatables():
 
 # --- 3. UI ---
 
-page = st.sidebar.selectbox("Navigation", ["Main Analysis", "Sanskrit Non-Translatables", "Admin & Logs"])
+# ── ROUTING ──────────────────────────────────────────────────────────────────
+# First visit: show splash. User chooses 'direct' or 'tour'.
+# 'direct' → straight to main app (sidebar + analysis)
+# 'tour'   → orientation home page
+# 'onboarded' persists for the session — back button on home page clears it.
+from home import render_splash, render_home
+
+if 'onboarded' not in st.session_state:
+    render_splash()
+    st.stop()
+
+if st.session_state['onboarded'] == 'tour':
+    render_home()
+    st.stop()
+
+# ── MAIN APP (onboarded == 'direct') ─────────────────────────────────────────
+
+page = st.sidebar.selectbox("Navigation", ["Main Analysis", "Sanskrit Non-Translatables", "Admin & Logs", "Home"])
 
 # ===========================================================================
 # PAGE: MAIN ANALYSIS
@@ -526,8 +543,8 @@ if page == "Main Analysis":
 
     choice = st.sidebar.selectbox("Canonical Texts", dropdown_options)
 
-    # Source card — shown immediately under dropdown for canonical selections
-    if choice not in ["Custom Text...", "── Linked Texts ──"] and choice in CORPORA:
+    # Source card — immediately under dropdown, before linked texts section
+    if choice not in ["Custom Text..."] and choice in CORPORA:
         _src = CORPORA[choice].get("source", "")
         st.sidebar.markdown(
             f"""<div style="background:#1e2a3a;border-left:3px solid #4a90d9;
@@ -622,15 +639,6 @@ if page == "Main Analysis":
         source_name  = corpus_data.get("source", "")
         active_title = f'⛵ The Fluttering Sail — "{choice}"'
         st.title(active_title)
-        # st.sidebar.markdown(
-        #     f"""<div style="background:#1e2a3a;border-left:3px solid #4a90d9;
-        #         padding:10px 14px;border-radius:4px;margin:8px 0 12px 0">
-        #         <span style="color:#7ab3e0;font-size:11px;font-weight:600;
-        #         text-transform:uppercase;letter-spacing:0.08em">Source</span><br>
-        #         <span style="color:#e8f0f8;font-size:14px;font-weight:500">{source_name}</span>
-        #     </div>""",
-        #     unsafe_allow_html=True
-        # )
         st.sidebar.markdown("**Context:**")
         st.sidebar.markdown(input_text)
 
@@ -1125,7 +1133,7 @@ elif page == "Admin & Logs":
                 "warn": None,
                 "dry_patch": True,
             },
-            "agent_expand.py — LIVE RUN (writes to DB, calls LLM API 💰))": {
+            "agent_expand.py — LIVE RUN (writes to DB, calls LLM API 💰)": {
                 "cmd": ["python3", "agent_expand.py"],
                 "warn": "⚠️ This will call the LLM API and WRITE to epistemic_lexicon.db. API costs apply. Are you sure?",
                 "dry_patch": False,
@@ -1203,3 +1211,6 @@ elif page == "Admin & Logs":
                 for tmp in ["_tmp_dry_run.py", "_tmp_live_run.py"]:
                     if _os.path.exists(tmp):
                         _os.remove(tmp)
+elif page == "Home":
+    from home import render_home
+    render_home()
