@@ -1,42 +1,53 @@
 {
-    "Fred Brooks (No Silver Bullet)": {
+    "No Silver Bullet": {
+        "source": "Fred Brooks",
         "taxonomy": "Software Essence",
         "text": "With software systems, the fundamental complexity is an essential property, not an accidental one. Hence, descriptions of a software entity that abstract away its complexity often abstract away its essence. Software engineering is plagued by conformity to arbitrary interfaces, severe changeability, and complete invisibility. We create complex, conceptual abstractions that must map precisely to mathematical specifications without structural deviation."
     },
-    "Bertrand Russell (A Free Man's Worship)": {
+    "A Free Man's Worship": {
+        "source": "Bertrand Russell",
         "taxonomy": "Rational Humanism",
         "text": "A Free Man's Worship requires that we acknowledge a world destitute of ultimate purpose, yet refuse to bow our intellect to tyranny. True human freedom is born when we abandon indignation and replace it with a logical resignation to truth. Through reason and skepticism, humanity preserves morality and science. Ethical knowledge and rationality remain our only shields against absolute despair, demanding justice for the individual within an indifferent society."
     },
     "The Constitution of India": {
+        "source": "Constituent Assembly of India",
         "taxonomy": "Modern Deontology",
         "text": "WE, THE PEOPLE OF INDIA, having solemnly resolved to constitute India into a SOVEREIGN SOCIALIST SECULAR DEMOCRATIC REPUBLIC and to secure to all its citizens: JUSTICE, social, economic and political; LIBERTY of thought, expression, belief, faith and worship; EQUALITY of status and of opportunity; and to promote among them all FRATERNITY assuring the dignity of the individual and the unity and integrity of the Nation."
     },
-    "Abraham Lincoln (Gettysburg Address)": {
+    "The Gettysburg Address": {
+        "source": "Abraham Lincoln",
         "taxonomy": "Sacrificial Liberty",
         "text": "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal. We cannot dedicate—we cannot consecrate—we cannot hallow—this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. We highly resolve that these dead shall not have died in vain—that this nation, under God, shall have a new birth of freedom."
     },
-    "Chanakya (Arthashastra)": {
+    "The Arthashastra": {
+        "source": "Chanakya (Kautilya)",
         "taxonomy": "Political Realism",
         "text": "The statecraft of a king relies entirely on Danda (punishment and law), which preserves the stability of the realm. The sovereign must secure his Kosha (treasury) and Amatya (ministers) while monitoring the moves of the Vijigishu (aspiring conqueror). Through strategic alliances (Sandhi) or deliberate conflict (Vigraha), a state enforces internal order and external balance, aligning material resources with the preservation of institutional duty."
     },
-    "Rig Veda (Nasadiya Sukta)": {
-        "taxonomy": "Cosmic Mystery",
-        "text": "Then there was neither non-existence nor existence; there was no realm of air, no sky beyond it. Darkness was hidden by darkness in the beginning, with no distinguishing sign; all this was water. Desire (Kama) arose in the beginning, which was the first seed of mind. Svadha (creative energy) was below, and vital force was above. The Adhyaksha (overseer) in the highest heaven, he surely knows—or perhaps he knows not."
-    },
-    "Aristotle (Nicomachean Ethics)": {
+    "The Nicomachean Ethics": {
+        "source": "Aristotle",
         "taxonomy": "Virtue Ethics",
         "text": "Eudaimonia (human flourishing) is an activity of the soul in accordance with excellence or virtue (Arete). Practical wisdom (Phronesis) guides us to find the golden mean (Mesotes) between excess and deficiency. This habitual disposition (Hexis) defines our characteristic function (Ergon). Justice (Dikaiosyne) and philosophical wisdom protect the human intellect against the moral weakness of Akrasia."
     },
-    "René Girard (I See Satan Fall Like Lightning)": {
-        "taxonomy": "Mimetic Foundation",
-        "text": "Human desire is never authentic or direct; it is inherently mimetic, copied entirely from a social model. This structural imitation generates inescapable rivalry, plunging communities into destabilizing crises of violence. To restore order, collective panic identifies a single scapegoat, whose sacrificial exclusion is viewed as sacred. All human myth, prohibition, and social structure are born to mask this foundational cycle of competitive contagion."
-    },
-    "Isaac Newton (Principia Mathematica)": {
+    "The Principia Mathematica": {
+        "source": "Isaac Newton",
         "taxonomy": "Scientific Categories",
         "text": "The mathematical principles of natural philosophy require clear axioms of motion. Every body perseveres in its state of rest or uniform motion unless compelled to change by forces impressed. Mass and acceleration dictate the structural framework of gravity. Absolute space and mathematical time exist independent of external observation, keeping the cosmic clockwork running in precise order."
     },
-    "Adam Smith (Wealth of Nations)": {
+    "The Wealth of Nations": {
+        "source": "Adam Smith",
         "taxonomy": "Economic Baseline",
         "text": "Every individual endeavors to employ his capital so that its produce may be of the greatest value. The market price of any specific commodity is regulated by the proportion between the quantity brought to market and effectual demand. Through commerce, division of labor, and investment of stock, revenue and profit are maximized. The transaction of wages and rent governs systemic progress through clear economic utility."
-    }
+    },
+    "The Communist Manifesto": {
+        "source": "Marx & Engels",
+        "taxonomy": "Revolutionary Materialism",
+        "text": "A spectre is haunting Europe — the spectre of communism. The history of all hitherto existing society is the history of class struggles. Freeman and slave, patrician and plebeian, lord and serf, guild-master and journeyman, in a word, oppressor and oppressed, stood in constant opposition to one another. The bourgeoisie has stripped of its halo every occupation hitherto honoured and looked up to with reverent awe. It has drowned the most heavenly ecstasies of religious fervour, of chivalrous enthusiasm, of philistine sentimentalism, in the icy water of egotistical calculation. The bourgeoisie has torn away from the family its sentimental veil, and has reduced the family relation to a mere money relation. All that is solid melts into air, all that is holy is profaned."
+    },
+    "The Vivekachudamani": {
+        "source": "Adi Shankaracharya",
+        "taxonomy": "Advaita Vedanta",
+        "text": "This human birth is hard to obtain. The body is impermanent. The senses are deluded. The world is illusion, Maya. Brahman alone is real. The Self, Atman, is identical with Brahman. Renunciation of worldly objects is moksha. The ego, ahankara, is the root of bondage and samsara. Through viveka, discrimination between the real and the unreal, and vairagya, dispassion toward impermanent things, the seeker attains samadhi and liberation. Neither action nor ritual nor social duty can liberate. Only the direct knowledge of the Self, jnana, dissolves ignorance, avidya. The wise one who has realised non-dual consciousness sees no separation between self and other. Brahman is pure consciousness, pure bliss, ananda, without beginning or end. The phenomenal world arises through superimposition, adhyasa, upon the absolute. Meditation, dhyana, and inquiry into the nature of the Self reveal that the individual soul, jiva, and the universal Self, paramatman, are one."
+    },
+    "__linked_corpora__": "sanskrit_corpora.json"
 }

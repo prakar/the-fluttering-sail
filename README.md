@@ -27,7 +27,7 @@ Every processed token is evaluated against a dual-lens framework across eight di
 This engine is built for **Forkable Philosophy**. If you disagree with our baseline geometric weights (for instance, if you believe a token like `"liberty"` should have a higher *Dharma* score or less *Power* weight), you can alter the system's entire worldview without changing the underlying engine:
 
 1. **Fork** this repository.
-2. Open `tranche_master.py`.
+2. Open `tranche_master.json`.
 3. Locate the target token in its respective tranche array.
 4. Modify the 8-decimal array values (bounded between `-1.00` and `1.00`).
 5. Commit and redeploy. The vector canvas will instantly update to reflect your unique school of thought.

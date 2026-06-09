@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "description": "The Fluttering Sail — Externalised LLM Prompt Definitions",
+    "version": "1.1",
+    "note": "Edit this file to tune prompts, model, temperature, or role without touching Python. Both agent_expand.py and app.py read from here at runtime. Changing dimension definitions here will affect all future ingestion runs — document any changes with a version bump in this meta block.",
+    "_note_comments": "JSON has no comment syntax — // and /* */ will break all parsers. Annotation keys prefixed with _note_ are the standard workaround. They are ignored by the application code (agent_expand.py and app.py skip any key starting with _note_) but are visible to any researcher reading the file."
+  },
+
+  "ingestion": {
+    "meta": {
+      "used_by": "agent_expand.py / fetch_empirical_vectors()",
+      "purpose": "Instructs the LLM to assign 8-dimensional philosophical vectors to batches of tokens.",
+      "placeholders": {
+        "{context_line}": "Injected at runtime — either 'Evaluate each term as a standalone philosophical concept.' (for tranches) or 'Evaluate these terms in the context of: <author>' (for manifest entries).",
+        "{terms}": "Comma-joined list of tokens in the current chunk.",
+        "{n_terms}": "Integer count of terms in the current chunk — used in the output format instruction."
+      }
+    },
+
+    "model": "gpt-4o",
+    "_note_model": "Accepts any OpenAI-compatible model string. Swap to 'gpt-4o-mini' to reduce cost, 'o1' for deeper reasoning, or any model served via an OpenAI-compatible endpoint (e.g. local Ollama). Note: response_format json_object is not supported by all models — if switching, verify support or set response_format to null.",
+
+    "temperature": 0.25,
+    "_note_temperature": "0.25 is deliberately conservative — low variance keeps vectors stable and reproducible across runs, which matters for the paper's reproducibility claim. Raise to 0.4-0.6 if you want more varied/exploratory vectors during development. Do NOT exceed 0.7 — above that the LLM tends to generate implausible philosophical assignments.",
+
+    "response_format": {"type": "json_object"},
+    "_note_response_format": "json_object enforces structured JSON output and eliminates markdown fences in the response. Set to null for models that do not support this parameter (e.g. older GPT-3.5, some local models). If set to null, the parser in fetch_empirical_vectors() will attempt to strip markdown fences before parsing — but reliability drops.",
+
+    "system_role": "You are an expert in comparative philosophy and computational ethics. You evaluate concepts rigorously across multiple philosophical traditions without cultural bias.",
+    "_note_system_role": "Reframe the LLM's persona here without touching Python. Experiment with more specific framings e.g. 'You are a scholar trained in both Analytic philosophy and Advaita Vedanta' to bias coverage toward underrepresented dimensions. Document any persona changes in the meta version field so runs are traceable.",
+
+    "prompt_template": "{context_line}\nTerms: {terms}\n\nAssign an analytical weight score across exactly 8 dimensions [u, f, p, m, t, s, d, c]:\n  u — Consequentialism: Maximising aggregate happiness (+1) vs causing suffering (-1)\n  f — Justice as Fairness: Just and procedurally equal (+1) vs arbitrary/discriminatory (-1)\n  p — Political Realism: Strategic and pragmatic (+1) vs passive/impotent (-1)\n  m — Mimetic Theory: Socially imitative/adaptive (+1) vs isolated/anti-social (-1)\n  t — Virtue Ethics/Telos: Purpose-driven, goal-directed (+1) vs purposeless/drifting (-1)\n  s — Deontology: Principled and duty-bound (+1) vs unprincipled/chaotic (-1)\n  d — Vedic Dharma: Aligned with cosmic order (+1) vs opposed to natural order (-1)\n  c — Advaita/Non-Dual: Seeing oneness in all (+1) vs radical separation (-1)\n\nUse the full continuous range [-1.0, +1.0]. Each term MUST have a genuinely distinct vector. Do NOT use repeating patterns, symmetric values, or identical magnitudes across terms.\n\nReturn ONLY a flat JSON object: {\"term\": [f,f,f,f,f,f,f,f], ...} with exactly {n_terms} keys matching the exact term strings above. No markdown, no nesting, no explanation.",
+    "_note_prompt_template": "This is the core methodological artefact of the ingestion pipeline. The dimension definitions (u through c) are the philosophical axes of the framework. To add a dimension: (1) add a line here, (2) add the new code letter to the dimension list [u,f,p,m,t,s,d,c], (3) update epistemic_schema.json LINEAGE_MAP, (4) add the column to the SQLite lexicon schema in engine_db.py and app.py. To rename a dimension's philosophical school, edit only this file — the code uses the short codes (u,f,p...) not the school names. The anti-pattern instruction ('Do NOT use repeating patterns...') is critical — its absence caused the rolling permutation corruption in the original dataset."
+  },
+
+  "synthesis": {
+    "meta": {
+      "used_by": "app.py / generate_triangulated_meaning()",
+      "purpose": "Instructs the LLM to produce a philosophical narration synthesising the ethical fingerprint of a text.",
+      "placeholders": {
+        "{vector_dict}": "The computed 8D average vector dict for the analysed text.",
+        "{source_context}": "First 1000 characters of the source text being analysed."
+      }
+    },
+
+    "model": "gpt-4o",
+    "_note_model": "Can differ from the ingestion model — synthesis is a creative writing task, ingestion is a structured classification task. A more capable model here produces richer narrations. Cost-sensitive deployments can use gpt-4o-mini for ingestion and keep gpt-4o only for synthesis.",
+
+    "temperature": 0.4,
+    "_note_temperature": "0.4 allows more expressive, varied narration than ingestion's 0.25 while remaining philosophically grounded. Raise to 0.6-0.7 for more poetic output. Lower to 0.2 for more literal, analytical narration. The difference is noticeable — experiment with a fixed corpus passage to calibrate to your preferred register.",
+
+    "response_format": null,
+    "_note_response_format": "Null here is correct — synthesis output is free-form prose, not JSON. Do not set json_object for this prompt.",
+
+    "system_role": "You are a master of comparative philosophy with deep knowledge of Western, Materialist, Enlightenment analytic ethics, Eastern/Universal Essentialist and Indic philosophical traditions, and their tensions.",
+    "_note_system_role": "The philosophical narrator persona. Adjust to shift the register of narrations. Examples: 'You are a Jesuit scholar fluent in both Thomistic and Vedantic philosophy' produces more theologically grounded narrations. 'You are a philosopher writing for a general educated audience' produces more accessible prose. Document persona changes in the meta version field.",
+
+    "prompt_template": "Topology: {vector_dict}\nSnippet: \"{source_context}\"\n\nIn less than 150 words spread over 1 to 3 paragraphs (as required by semantic or logical divisions), interpret the text using each of the philosophical schools listed and comment on internal frictions, alignments, and the gestalt using the best high-school to undergraduate words istead of technical or academic terms. DO NOT mention the pilosophical schools or the numerical weights, nor waste words with introductory language or polite sign-offs (e.g., 'The snippet appears to be...', etc). Finally, write a one-line verdict with the triangulated essence of the text",
+    "_note_prompt_template": "The narration instruction. Key constraints: (1) 'state paragraph count, e.g., single, 1, 3, etc' — prevents the LLM from producing a bulleted breakdown which defeats the purpose of synthesis. (2) 'DO NOT list weights or dimensions by name' — forces conceptual rather than mechanical output. (3) 'internal friction' — this word is load-bearing; it directs the LLM toward the antagonistic dimensions rather than only the aligned ones. If narrations feel one-sided, strengthen this instruction. The topology dict is passed as a Python repr string — it is readable but not pretty-printed; this is intentional to minimise token count."
+  }
+}

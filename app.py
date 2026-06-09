@@ -1,3 +1,43 @@
+"""
+app.py — The Fluttering Sail
+=============================
+A multi-polar, quantised, dynamical framework for culture-agnostic
+ethical evaluation and real-time synthesis.
+
+Architecture
+------------
+This file implements the Streamlit UI and core analysis pipeline.
+It is intentionally kept as a thin UI layer:
+  - Visualisation: make_radar_figure(), make_overlay_figure()
+  - Tokenisation: tokenise() with Unicode diacritic normalisation
+  - LLM synthesis: generate_triangulated_meaning()
+  - Diagnostics: delegated entirely to diagnostics_engine.py
+
+Configuration files (edit these, not Python, for routine tuning)
+  prompts.json       — LLM model, temperature, role, prompt templates
+  diagnostics.json   — diagnostic threshold values (Table 1 in paper)
+  tranche_master.json — anchor seeds + expansion vocabulary
+  corpora.json       — benchmark corpus texts + linked_corpora pointer
+  sanskrit_corpora.json — extended Sanskrit texts (linked, not benchmarks)
+  epistemic_schema.json — dimension labels and lineage map
+  epistemic_lexicon.db  — SQLite lexicon (618+ entries)
+
+Live app  : https://the-fluttering-sail.onrender.com
+Repository: https://github.com/prakar/the-fluttering-sail
+
+Companion paper
+  "A New Moral Compass: An Extensible, Quantised, Dynamical,
+   Multi-Polar Framework for Culture-Agnostic Ethical Evaluation
+   and Real-Time Synthesis"
+  Submitted to: Ethics and Information Technology (Springer)
+
+Dependencies: see requirements.txt
+Licence     : see LICENSE
+"""
+
+# ---------------------------------------------------------------------------
+# IMPORTS
+# ---------------------------------------------------------------------------
 import streamlit as st
 import json
 import os
@@ -8,25 +48,34 @@ import plotly.graph_objects as go
 import openai
 import httpx
 import logging
-import io
+import unicodedata
 import sys
 from datetime import datetime
 
-# --- 1. CORE CONFIG & LOGGING ---
-# In-memory log capture for the Admin log viewer
+# Diagnostic engine is a standalone module — see diagnostics_engine.py
+# Importing here registers its logger into the same logging hierarchy
+from diagnostics_engine import run_diagnostics, render_diagnostics, render_proximity_meters
+
+# ---------------------------------------------------------------------------
+# 1. LOGGING — in-memory capture for the Admin log viewer
+# ---------------------------------------------------------------------------
 class MemoryLogHandler(logging.Handler):
+    """Captures log records in memory for display in the Admin Live Log tab."""
     MAX_LINES = 500
+
     def __init__(self):
         super().__init__()
         self.records = []
+
     def emit(self, record):
         self.records.append({
-            "ts": datetime.fromtimestamp(record.created).strftime("%H:%M:%S"),
+            "ts":    datetime.fromtimestamp(record.created).strftime("%H:%M:%S"),
             "level": record.levelname,
-            "msg": self.format(record)
+            "msg":   self.format(record)
         })
         if len(self.records) > self.MAX_LINES:
             self.records = self.records[-self.MAX_LINES:]
+
 
 memory_handler = MemoryLogHandler()
 memory_handler.setFormatter(logging.Formatter("%(levelname)s | %(name)s | %(message)s"))
@@ -34,231 +83,203 @@ memory_handler.setFormatter(logging.Formatter("%(levelname)s | %(name)s | %(mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.addHandler(memory_handler)
-# Also capture root so plotly/sqlite noise is visible if needed
+# Attach to root so diagnostics_engine and other modules also appear in the live log
 logging.getLogger().addHandler(memory_handler)
 
+# ---------------------------------------------------------------------------
+# 2. STREAMLIT PAGE CONFIG
+# ---------------------------------------------------------------------------
 st.set_page_config(page_title="The Fluttering Sail", page_icon="⛵", layout="wide")
 
-DB_NAME = "epistemic_lexicon.db"
-SCHEMA, CORPORA = {}, {}
+# ---------------------------------------------------------------------------
+# 3. CONSTANTS
+# ---------------------------------------------------------------------------
+DB_NAME      = "epistemic_lexicon.db"
+DIMS         = ['u', 'f', 'p', 'm', 't', 's', 'd', 'c']
+MAT_DIMS     = ['u', 'f', 'p', 'm']   # Materialist Lens axes
+DHARMIC_DIMS = ['t', 's', 'd', 'c']   # Dharmic-Essentialist Lens axes
 
-DIMS = ['u', 'f', 'p', 'm', 't', 's', 'd', 'c']
-MAT_DIMS  = ['u', 'f', 'p', 'm']   # Materialist Lens
-DHARMIC_DIMS = ['t', 's', 'd', 'c'] # Dharmic-Essentialist Lens
+SCHEMA: dict = {}
+CORPORA: dict = {}
+_RAW_CORPORA: dict = {}
 
+# ---------------------------------------------------------------------------
+# 3b. LLM PROVIDER CONFIG (from llm_config.json)
+# ---------------------------------------------------------------------------
+_LLM_CONFIG_FILE = "llm_config.json"
+_LLM_CFG: dict = {}
+if os.path.exists(_LLM_CONFIG_FILE):
+    with open(_LLM_CONFIG_FILE) as _f:
+        _LLM_CFG = {k: v for k, v in json.load(_f).items() if not k.startswith("_note_")}
+    logger.info("✅ LLM config: provider=%s base_url=%s key_var=%s",
+                _LLM_CFG.get("provider"), _LLM_CFG.get("base_url"), _LLM_CFG.get("api_key_env_var"))
+else:
+    logger.warning("⚠️ llm_config.json not found — synthesis will fall back to LLM_API_KEY env var + default endpoint")
+
+LLM_KEY_ENV_VAR = _LLM_CFG.get("api_key_env_var", "OPENAI_API_KEY") # fallback if llm_config.json absent
+LLM_BASE_URL    = _LLM_CFG.get("base_url", "https://api.openai.com/v1")
+
+# ---------------------------------------------------------------------------
+# 4. ASSET LOADING
+# ---------------------------------------------------------------------------
 def load_assets():
-    global SCHEMA, CORPORA
+    """
+    Load epistemic_schema.json and corpora.json into module-level globals.
+    Logs success/failure for each file — visible in Admin > Live Log.
+    The raw corpora dict (including __ metadata keys) is preserved in
+    _RAW_CORPORA so load_linked_corpora() can access the pointer.
+    """
+    global SCHEMA, CORPORA, _RAW_CORPORA
+
+    # Schema
     if os.path.exists("epistemic_schema.json"):
-        with open("epistemic_schema.json", "r") as f:
-            SCHEMA = json.load(f)
-        logger.info("✅ Schema loaded — %d lineage entries", len(SCHEMA.get("LINEAGE_MAP", {})))
+        try:
+            with open("epistemic_schema.json") as f:
+                SCHEMA = json.load(f)
+            logger.info("✅ Schema loaded — %d lineage entries", len(SCHEMA.get("LINEAGE_MAP", {})))
+        except Exception as exc:
+            logger.error("❌ Failed to parse epistemic_schema.json: %s", exc)
     else:
-        logger.warning("⚠️  epistemic_schema.json not found")
+        logger.warning("⚠️  epistemic_schema.json not found — dimension labels will be missing")
+
+    # Corpora
     if os.path.exists("corpora.json"):
-        with open("corpora.json", "r") as f:
-            CORPORA = json.load(f)
-        logger.info("✅ Corpora loaded — %d documents", len(CORPORA))
+        try:
+            with open("corpora.json") as f:
+                _RAW_CORPORA = json.load(f)
+            # Strip __ metadata keys for the public CORPORA dict used by the UI
+            CORPORA = {k: v for k, v in _RAW_CORPORA.items() if not k.startswith("__")}
+            logger.info(
+                "✅ Corpora loaded — %d benchmark texts | linked_corpora: %s",
+                len(CORPORA),
+                _RAW_CORPORA.get("__linked_corpora__", "none")
+            )
+        except Exception as exc:
+            logger.error("❌ Failed to parse corpora.json: %s", exc)
     else:
-        logger.warning("⚠️  corpora.json not found")
+        logger.warning("⚠️  corpora.json not found — benchmark dropdown will be empty")
+
 
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    conn.execute("CREATE TABLE IF NOT EXISTS synthesis_cache (hash TEXT PRIMARY KEY, response TEXT)")
-    conn.commit()
-    conn.close()
-    logger.info("✅ DB initialised: %s", DB_NAME)
+    """Ensure synthesis_cache table exists. Safe to call on every startup."""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS synthesis_cache "
+            "(hash TEXT PRIMARY KEY, response TEXT)"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("✅ DB ready: %s", DB_NAME)
+    except Exception as exc:
+        logger.error("❌ DB init failed for %s: %s", DB_NAME, exc)
+
 
 load_assets()
 init_db()
 
-# --- 2. DIAGNOSTIC ENGINE ---
-
-import numpy as np
-
-# Threshold constants — documented in the paper as Table 1
-DIAG_THRESHOLDS = {
-    "baconian_u_min":    0.80,
-    "baconian_t_max":    0.15,
-    "baconian_s_max":    0.10,
-    "mimetic_p_min":     0.75,
-    "mimetic_m_min":     0.70,
-    "mimetic_d_max":     0.20,
-    "mimetic_c_max":     0.15,
-    "ascetic_c_min":     0.90,
-    "ascetic_t_min":     0.85,
-    "ascetic_u_max":     0.20,
-    "ascetic_f_max":     0.20,
-    "equilibrium_f_min": 0.70,
-    "equilibrium_u_min": 0.60,
-    "equilibrium_d_min": 0.75,
-    "equilibrium_s_min": 0.75,
-    "nyaya_sigma_max":   0.15,
-    "nyaya_mu_min":      0.40,
-}
-
-def run_diagnostics(avg: dict) -> list:
+# ---------------------------------------------------------------------------
+# 5. TOKENISATION
+# ---------------------------------------------------------------------------
+def normalise_token(w: str) -> str:
     """
-    Evaluate avg_dict against all geometric diagnostic zones.
-    Returns list of triggered alerts: [{"name", "level", "icon", "headline", "detail"}, ...]
-    level: "warning" | "error" | "success" | "info"
+    Strip Unicode diacritics (IAST romanised Sanskrit, accented Latin, etc.)
+    so 'kāmas' matches lexicon key 'kamas', 'tapas' → 'tapas', etc.
+
+    Mechanism: NFD decomposition separates base character from combining marks;
+    we drop all characters in Unicode category Mn (Mark, Nonspacing).
     """
-    alerts = []
-    u  = avg.get('u', 0);  f = avg.get('f', 0)
-    p  = avg.get('p', 0);  m = avg.get('m', 0)
-    t  = avg.get('t', 0);  s = avg.get('s', 0)
-    d  = avg.get('d', 0);  c = avg.get('c', 0)
-    th = DIAG_THRESHOLDS
-
-    # -- Baconian Collapse --
-    if u >= th["baconian_u_min"] and abs(t) <= th["baconian_t_max"] and abs(s) <= th["baconian_s_max"]:
-        alerts.append({
-            "name":     "Baconian Collapse",
-            "level":    "error",
-            "icon":     "⚙️",
-            "headline": "Baconian Collapse — Hyper-Optimisation / Utility Extraction",
-            "detail":   (
-                f"Utility is dominant (U={u:+.2f}) while Telos (T={t:+.2f}) and "
-                f"Structure (S={s:+.2f}) are near-zero. This text treats human agency "
-                "and natural systems as raw inputs for a production pipeline. "
-                "Language is entirely extraction-oriented."
-            ),
-        })
-        logger.info("🚨 Diagnostic: Baconian Collapse triggered (U=%.2f, T=%.2f, S=%.2f)", u, t, s)
-
-    # -- Mimetic Shear --
-    if (p >= th["mimetic_p_min"] and abs(m) >= th["mimetic_m_min"]
-            and abs(d) <= th["mimetic_d_max"] and abs(c) <= th["mimetic_c_max"]):
-        alerts.append({
-            "name":     "Mimetic Shear",
-            "level":    "error",
-            "icon":     "⚔️",
-            "headline": "Mimetic Shear — Power Dominance / Ontological Erasure",
-            "detail":   (
-                f"Power (P={p:+.2f}) and Mimetic conflict (M={m:+.2f}) dominate "
-                f"while Dharma (D={d:+.2f}) and Consciousness (C={c:+.2f}) collapse. "
-                "This is the signature of hyper-partisan propaganda, outrage loops, "
-                "or wartime mobilisation language. The text severs connection to "
-                "holistic cosmic balance (Ṛta)."
-            ),
-        })
-        logger.info("🚨 Diagnostic: Mimetic Shear triggered (P=%.2f, M=%.2f, D=%.2f, C=%.2f)", p, m, d, c)
-
-    # -- Ascetic Drift --
-    if (abs(c) >= th["ascetic_c_min"] and abs(t) >= th["ascetic_t_min"]
-            and abs(u) <= th["ascetic_u_max"] and abs(f) <= th["ascetic_f_max"]):
-        alerts.append({
-            "name":     "Ascetic Drift",
-            "level":    "warning",
-            "icon":     "🌫️",
-            "headline": "Ascetic Drift — Hyper-Transcendence / Civic Deficit",
-            "detail":   (
-                f"Consciousness (C={c:+.2f}) and Telos (T={t:+.2f}) are extreme "
-                f"while Utility (U={u:+.2f}) and Fairness (F={f:+.2f}) collapse. "
-                "This text is ethically pure but lacks actionable framework for "
-                "institutional execution, distributive justice, or collective governance."
-            ),
-        })
-        logger.info("⚠️  Diagnostic: Ascetic Drift triggered (C=%.2f, T=%.2f, U=%.2f, F=%.2f)", c, t, u, f)
-
-    # -- Equilibrium / Purushartha --
-    if (f >= th["equilibrium_f_min"] and u >= th["equilibrium_u_min"]
-            and abs(d) >= th["equilibrium_d_min"] and abs(s) >= th["equilibrium_s_min"]):
-        alerts.append({
-            "name":     "Purushartha Equilibrium",
-            "level":    "success",
-            "icon":     "🪷",
-            "headline": "Purushartha Blueprint — Holistic Synthesis / Equilibrium Zone",
-            "detail":   (
-                f"Balanced high-magnitude convergence: F={f:+.2f}, U={u:+.2f}, "
-                f"D={d:+.2f}, S={s:+.2f}. This text achieves integration of worldly "
-                "efficiency and transcendent purpose — the gold standard of the framework."
-            ),
-        })
-        logger.info("🪷  Diagnostic: Purushartha Equilibrium triggered")
-
-    # -- Nyaya Meta-Condition (balanced across ALL 8 dims) --
-    vals = np.array([u, f, p, m, t, s, d, c])
-    sigma = float(np.std(np.abs(vals)))
-    mu    = float(np.mean(np.abs(vals)))
-    if sigma <= th["nyaya_sigma_max"] and mu >= th["nyaya_mu_min"]:
-        alerts.append({
-            "name":     "Nyaya Meta-Condition",
-            "level":    "info",
-            "icon":     "🔷",
-            "headline": "Nyaya Meta-Condition — Epistemological Stability",
-            "detail":   (
-                f"σ={sigma:.3f} (≤{th['nyaya_sigma_max']}) and μ={mu:.3f} "
-                f"(≥{th['nyaya_mu_min']}) across all 8 dimensions. "
-                "This corpus reflects a harmonised, epistemologically stable worldview "
-                "consistent with classical Nyaya analytical equilibrium."
-            ),
-        })
-        logger.info("🔷 Diagnostic: Nyaya Meta-Condition triggered (σ=%.3f, μ=%.3f)", sigma, mu)
-
-    if not alerts:
-        logger.info("📊 Diagnostics: no thresholds breached")
-    return alerts
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', w)
+        if unicodedata.category(c) != 'Mn'
+    )
 
 
-def render_diagnostics(alerts: list):
-    """Render alert banners in the UI. Called after radar charts."""
-    if not alerts:
-        return
-    st.markdown("---")
-    st.markdown("### 🔬 Diagnostic Alerts")
-    for a in alerts:
-        fn = {"error": st.error, "warning": st.warning,
-              "success": st.success, "info": st.info}[a["level"]]
-        fn(f"{a['icon']} **{a['headline']}**\n\n{a['detail']}")
-
-
-def make_flutter_frames(keys_list, data_dict, n_frames=12, noise_sigma=0.013):
+def tokenise(text: str) -> list[str]:
     """
-    Generate Plotly animation frames for the 'flutter' effect.
-    Each frame adds tiny Gaussian noise to the aligned trace only —
-    visually communicating that weights are approximations, not fixed truth.
-    noise_sigma=0.013 is subtle enough not to distort shape.
+    Split text into lowercase tokens, strip punctuation and diacritics.
+    Strips: standard ASCII punctuation + em-dash, Devanagari dandas (।॥|).
+    Returns list of non-empty normalised strings.
     """
-    lineage_map = SCHEMA.get("LINEAGE_MAP", {})
-    labels, base_aligned, base_antag = [], [], []
-    for k in keys_list:
-        raw = data_dict.get(k, 0)
-        m   = lineage_map.get(k.lower(), {})
-        friendly = m.get("friendly_display", k)
-        label = f"↙ {friendly}<br><i>(Antagonistic)</i>" if raw < 0 else friendly.replace(" (", "<br>(")
-        labels.append(label)
-        base_aligned.append(max(raw, 0))
-        base_antag.append(abs(min(raw, 0)))
+    strip_chars = ".,!?;:\"()[]'—।॥|ḥ"
+    tokens = [
+        normalise_token(w.lower().strip(strip_chars))
+        for w in text.split()
+        if w.strip(strip_chars)
+    ]
+    non_empty = [t for t in tokens if t]
+    logger.debug("tokenise(): %d raw → %d tokens", len(text.split()), len(non_empty))
+    return non_empty
 
-    labels_c    = labels       + [labels[0]]
-    base_antag_c = base_antag  + [base_antag[0]]
-
-    frames = []
-    for i in range(n_frames):
-        noise = np.random.normal(0, noise_sigma, len(base_aligned))
-        noisy = np.clip(np.array(base_aligned) + noise, 0, 1).tolist()
-        noisy_c = noisy + [noisy[0]]
-        frames.append(go.Frame(
-            data=[
-                go.Scatterpolar(r=noisy_c,    theta=labels_c),   # trace 0: aligned (flutter)
-                go.Scatterpolar(r=base_antag_c, theta=labels_c), # trace 1: antagonistic (stable)
-            ],
-            name=str(i)
-        ))
-    return frames, labels_c, base_aligned, base_antag
-
-
-def make_radar_figure_animated(keys_list, data_dict, fillcolor=None, line_color=None, height=420):
+# ---------------------------------------------------------------------------
+# 6. LINKED CORPORA
+# ---------------------------------------------------------------------------
+def load_linked_corpora() -> dict:
     """
-    Static dual-trace radar for Main Analysis page.
-    Flutter removed — was consuming vertical space with buttons.
-    Canvas fills ~90% of the figure via domain + tight margins.
+    Follow the __linked_corpora__ pointer in corpora.json (stored in _RAW_CORPORA)
+    and load the referenced file.
+
+    Design note: _RAW_CORPORA (not CORPORA) must be used here because CORPORA
+    has already had __ keys stripped. This was the original bug — CORPORA.get()
+    would always return '' for __linked_corpora__.
+
+    Returns {title: corpus_data_dict} — empty dict if file missing or unreadable.
     """
-    return make_radar_figure(keys_list, data_dict,
-                             fillcolor=fillcolor, line_color=line_color, height=height)
+    linked_file = _RAW_CORPORA.get("__linked_corpora__", "")
+    if not linked_file:
+        logger.debug("load_linked_corpora: no __linked_corpora__ key in corpora.json")
+        return {}
+    if not os.path.exists(linked_file):
+        logger.warning(
+            "⚠️  Linked corpora file '%s' not found in working directory. "
+            "Ensure it is committed to the repository.", linked_file
+        )
+        return {}
+    try:
+        with open(linked_file) as f:
+            data = json.load(f)
+        result = {k: v for k, v in data.items() if not k.startswith("__")}
+        logger.info("✅ Linked corpora loaded from %s — %d texts", linked_file, len(result))
+        return result
+    except Exception as exc:
+        logger.error("❌ Failed to load linked corpora from %s: %s", linked_file, exc)
+        return {}
+
+# Load externalised prompts — filter _note_ annotation keys (documentation only, not active config)
+_PROMPTS_FILE = "prompts.json"
+_SYNTHESIS_PROMPT: dict = {}
+if os.path.exists(_PROMPTS_FILE):
+    with open(_PROMPTS_FILE) as _f:
+        _raw_synthesis = json.load(_f).get("synthesis", {})
+    _SYNTHESIS_PROMPT = {
+        k: v for k, v in _raw_synthesis.items()
+        if not k.startswith("_note_") and k != "meta"
+    }
+    logger.info("✅ Prompts loaded from %s (synthesis model=%s, temp=%s)",
+                _PROMPTS_FILE,
+                _SYNTHESIS_PROMPT.get("model", "?"),
+                _SYNTHESIS_PROMPT.get("temperature", "?"))
+else:
+    logger.warning("⚠️  %s not found — synthesis will use hardcoded fallback", _PROMPTS_FILE)
+
+import numpy as np  # needed for radar figure computations
+
+# ---------------------------------------------------------------------------
+# 7. PROMPTS LOADING
+# ---------------------------------------------------------------------------
 
 
 # --- 3. LOGIC ENGINES ---
+
+def _radar_range(keys_list: list, *data_dicts) -> float:
+    """Compute radial axis ceiling: max abs value across all traces + 15% padding, capped [0.5, 1.0]."""
+    vals = []
+    for d in data_dicts:
+        vals.extend(abs(d.get(k, 0)) for k in keys_list)
+    peak = max(vals) if vals else 0.6
+    ceiling = min(max(round(peak * 1.15, 2), 0.5), 1.0)
+    return ceiling
+
 
 def make_radar_figure(keys_list, data_dict, title=None, fillcolor=None, line_color=None, height=420):
     """
@@ -266,7 +287,7 @@ def make_radar_figure(keys_list, data_dict, title=None, fillcolor=None, line_col
     - Trace 1 (blue): aligned dimensions (raw >= 0), clamped to 0 where negative.
     - Trace 2 (orange): antagonistic dimensions (raw < 0), abs() value, clamped to 0 where positive.
     Angular labels carry '↙ (Antagonistic)' marker on negative spokes.
-    Range [0,1] — spoke length = intensity; colour = polarity.
+    Radial range is computed dynamically so spokes fill ~85% of the canvas without clipping.
     """
     lineage_map = SCHEMA.get("LINEAGE_MAP", {})
     labels, aligned_vals, antag_vals = [], [], []
@@ -291,6 +312,10 @@ def make_radar_figure(keys_list, data_dict, title=None, fillcolor=None, line_col
     aligned_vals_c = aligned_vals + [aligned_vals[0]]
     antag_vals_c   = antag_vals   + [antag_vals[0]]
 
+    r_max = _radar_range(keys_list, data_dict)
+    tick_step = 0.25
+    ticks = [round(i * tick_step, 2) for i in range(int(r_max / tick_step) + 1)]
+
     aligned_color = fillcolor  or 'rgba(100,160,255,0.25)'
     aligned_line  = line_color or 'rgba(100,160,255,0.9)'
 
@@ -311,9 +336,9 @@ def make_radar_figure(keys_list, data_dict, title=None, fillcolor=None, line_col
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, 0.75],
+                range=[0, r_max],
                 tickfont=dict(size=9),
-                tickvals=[0, 0.25, 0.5, 0.75],
+                tickvals=ticks,
             ),
             angularaxis=dict(tickfont=dict(size=11)),
             hole=0.0,
@@ -377,10 +402,15 @@ def make_overlay_figure(mat_dict, dharmic_dict, height=520):
         line=dict(color='rgba(160,80,255,0.9)', width=2, dash='dot'),
         name='Dharmic — Antagonistic'
     ))
+    all_keys = MAT_DIMS + DHARMIC_DIMS
+    r_max = _radar_range(all_keys, mat_dict, dharmic_dict)
+    tick_step = 0.25
+    ticks = [round(i * tick_step, 2) for i in range(int(r_max / tick_step) + 1)]
+
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(visible=True, range=[0, 0.75], tickfont=dict(size=9),
-                            tickvals=[0, 0.25, 0.5, 0.75]),
+            radialaxis=dict(visible=True, range=[0, r_max], tickfont=dict(size=9),
+                            tickvals=ticks),
             angularaxis=dict(tickfont=dict(size=11)),
             domain=dict(x=[0.0, 1.0], y=[0.0, 1.0]),
         ),
@@ -392,6 +422,11 @@ def make_overlay_figure(mat_dict, dharmic_dict, height=520):
     return fig
 
 
+# Alias — flutter animation was removed (consumed too much vertical space).
+# The animated name is kept so call sites don't need updating.
+make_radar_figure_animated = make_radar_figure
+
+
 def get_cached_synthesis(text_content, vector_dict):
     unique_str = text_content + str(sorted(vector_dict.items()))
     text_hash  = hashlib.md5(unique_str.encode()).hexdigest()
@@ -401,35 +436,52 @@ def get_cached_synthesis(text_content, vector_dict):
     return (res[0] if res else None), text_hash
 
 
-def generate_triangulated_meaning(vector_dict, source_context):
-    api_key = os.environ.get("OPENAI_API_KEY")
+def generate_triangulated_meaning(vector_dict: dict, source_context: str) -> str:
+    """
+    Generate philosophical narration via LLM.
+    Provider, endpoint, and API key name all read from llm_config.json.
+    Falls back to the LLM API key env var + default endpoint if llm_config.json is missing.
+    """
+    api_key = os.environ.get(LLM_KEY_ENV_VAR)
     if not api_key:
-        logger.warning("generate_triangulated_meaning: OPENAI_API_KEY not set")
-        return "⚠️ API Key Missing. Set OPENAI_API_KEY in your environment."
-    prompt = f"""
-Topology: {vector_dict}
-Snippet: "{source_context[:1000]}"
+        logger.warning("generate_triangulated_meaning: %s not set", LLM_KEY_ENV_VAR)
+        return f"⚠️ API Key Missing. Set {LLM_KEY_ENV_VAR} in your environment."
 
-Construct a single, dense paragraph triangulating the 'essence' of this text.
-Explain its internal friction using the philosophical schools represented in the topology.
-DO NOT list weights or dimensions by name. Focus on the conceptual synthesis.
-"""
-    logger.info("🤖 Calling GPT-4o for synthesis (snippet len=%d)", len(source_context))
+    cfg         = _SYNTHESIS_PROMPT
+    model       = cfg.get("model", "gpt-4o")
+    temperature = cfg.get("temperature", 0.4)
+    system_role = cfg.get("system_role", "You are a master of comparative philosophy.")
+    template    = cfg.get("prompt_template",
+        'Topology: {vector_dict}\nSnippet: "{source_context}"\n\n'
+        "Construct a single, dense paragraph triangulating the 'essence' of this text. "
+        "Explain its internal friction using the philosophical schools represented in the topology. "
+        "DO NOT list weights or dimensions by name. Focus on the conceptual synthesis.")
+
+    prompt = (template
+              .replace("{vector_dict}", str(vector_dict))
+              .replace("{source_context}", source_context[:1000]))
+
+    logger.info("🤖 Synthesis — provider=%s model=%s temp=%s",
+                _LLM_CFG.get("provider", "openai"), model, temperature)
     try:
-        client = openai.OpenAI(api_key=api_key, http_client=httpx.Client())
+        client = openai.OpenAI(
+            api_key=api_key,
+            base_url=LLM_BASE_URL,
+            http_client=httpx.Client()
+        )
         res = client.chat.completions.create(
-            model="gpt-4o",
+            model=model,
             messages=[
-                {"role": "system", "content": "You are a master of comparative philosophy."},
+                {"role": "system", "content": system_role},
                 {"role": "user",   "content": prompt}
             ],
-            temperature=0.4
+            temperature=temperature,
         )
         result = res.choices[0].message.content
-        logger.info("✅ GPT-4o synthesis returned %d chars", len(result))
+        logger.info("✅ Synthesis returned %d chars", len(result))
         return result
     except Exception as e:
-        logger.error("GPT-4o error: %s", str(e))
+        logger.error("Synthesis error: %s", str(e))
         return f"⚠️ Error: {str(e)}"
 
 
@@ -466,39 +518,161 @@ page = st.sidebar.selectbox("Navigation", ["Main Analysis", "Sanskrit Non-Transl
 # PAGE: MAIN ANALYSIS
 # ===========================================================================
 if page == "Main Analysis":
-    st.title("⛵ THE FLUTTERING SAIL")
+    # Build dropdown: 10 canonical + "Custom Text..."
+    # Linked texts appear as persistent sidebar buttons — always visible
+    main_keys      = [k for k in CORPORA.keys() if not k.startswith("__")]
+    LINKED_CORPORA = load_linked_corpora()
+    dropdown_options = main_keys + ["Custom Text..."]
 
-    choice = st.sidebar.selectbox("Benchmark Document", list(CORPORA.keys()) + ["Custom Text..."])
-    if choice != "Custom Text...":
-        input_text = CORPORA.get(choice, {}).get("text", "")
-        st.sidebar.markdown(f"**Source Context:**\n\n{input_text}")
+    choice = st.sidebar.selectbox("Canonical Texts", dropdown_options)
+
+    # Source card — shown immediately under dropdown for canonical selections
+    if choice not in ["Custom Text...", "── Linked Texts ──"] and choice in CORPORA:
+        _src = CORPORA[choice].get("source", "")
+        st.sidebar.markdown(
+            f"""<div style="background:#1e2a3a;border-left:3px solid #4a90d9;
+                padding:10px 14px;border-radius:4px;margin:4px 0 8px 0">
+                <span style="color:#7ab3e0;font-size:11px;font-weight:600;
+                text-transform:uppercase;letter-spacing:0.08em">Source</span><br>
+                <span style="color:#e8f0f8;font-size:14px;font-weight:500">{_src}</span>
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+    # --- Persistent Linked Texts section in sidebar ---
+    if LINKED_CORPORA:
+        st.sidebar.markdown("---")
+        st.sidebar.markdown(
+            """<div style="color:#c39bd3;font-size:11px;font-weight:600;
+               text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">
+               📜 Linked Texts</div>""",
+            unsafe_allow_html=True
+        )
+        for lt_name in LINKED_CORPORA:
+            if st.sidebar.button(lt_name, key=f"lt_{lt_name}", width="stretch"):
+                st.session_state['linked_choice'] = lt_name
+                # Clear any active synthesis state when switching texts
+                st.session_state.pop('synth_active', None)
+
+    # --- Resolve what to display ---
+    input_text   = ""
+    source_name  = ""
+    active_title = ""
+
+    linked_choice = st.session_state.get('linked_choice')
+
+    # A linked text button takes priority unless user explicitly chose a canonical or custom
+    # Clicking the main dropdown clears the linked choice
+    if choice != st.session_state.get('_last_dropdown_choice'):
+        st.session_state.pop('linked_choice', None)
+        linked_choice = None
+    st.session_state['_last_dropdown_choice'] = choice
+
+    if linked_choice and linked_choice in LINKED_CORPORA:
+        # --- LINKED TEXT VIEW ---
+        lt_data     = LINKED_CORPORA[linked_choice]
+        input_text  = lt_data.get("text", "")
+        source_name = lt_data.get("source", "")
+        active_title = f'⛵ The Fluttering Sail — "{linked_choice}"'
+        st.title(active_title)
+        st.sidebar.markdown(
+            f"""<div style="background:#2a1e3a;border-left:3px solid #9b59b6;
+                padding:10px 14px;border-radius:4px;margin:8px 0 12px 0">
+                <span style="color:#c39bd3;font-size:11px;font-weight:600;
+                text-transform:uppercase;letter-spacing:0.08em">Linked Source</span><br>
+                <span style="color:#e8f0f8;font-size:14px;font-weight:500">{source_name}</span>
+            </div>""",
+            unsafe_allow_html=True
+        )
+        st.sidebar.markdown("**Text:**")
+        st.sidebar.markdown(input_text)
+
+    elif choice == "Custom Text...":
+        # --- CUSTOM TEXT VIEW ---
+        st.session_state.pop('linked_choice', None)
+        active_title = '⛵ The Fluttering Sail — Custom Analysis'
+        st.title(active_title)
+        input_text = st.sidebar.text_area(
+            "Paste any passage:",
+            height=300,
+            placeholder="Paste a speech, mission statement, policy document...",
+            value=st.session_state.get('custom_text', ''),
+        )
+        source_name = "Custom"
+        analyse_btn = st.sidebar.button("🔍 Analyse", type="primary")
+        if analyse_btn:
+            # Persist text so it survives st.rerun() calls (e.g. Synthesize button)
+            st.session_state['custom_text'] = input_text
+            st.session_state['custom_ran'] = True
+        elif st.session_state.get('custom_ran') and st.session_state.get('custom_text'):
+            # Rerun after Synthesize/De-merge — restore persisted text
+            input_text = st.session_state['custom_text']
+        else:
+            input_text = ""
+            if not st.session_state.get('custom_ran'):
+                st.info("Paste a passage in the sidebar and click **Analyse** to begin.")
+
     else:
-        input_text = st.sidebar.text_area("Passage", height=300)
+        # --- CANONICAL CORPUS VIEW ---
+        st.session_state.pop('linked_choice', None)
+        st.session_state.pop('custom_ran', None)
+        st.session_state.pop('custom_text', None)
+        corpus_data  = CORPORA.get(choice, {})
+        input_text   = corpus_data.get("text", "")
+        source_name  = corpus_data.get("source", "")
+        active_title = f'⛵ The Fluttering Sail — "{choice}"'
+        st.title(active_title)
+        # st.sidebar.markdown(
+        #     f"""<div style="background:#1e2a3a;border-left:3px solid #4a90d9;
+        #         padding:10px 14px;border-radius:4px;margin:8px 0 12px 0">
+        #         <span style="color:#7ab3e0;font-size:11px;font-weight:600;
+        #         text-transform:uppercase;letter-spacing:0.08em">Source</span><br>
+        #         <span style="color:#e8f0f8;font-size:14px;font-weight:500">{source_name}</span>
+        #     </div>""",
+        #     unsafe_allow_html=True
+        # )
+        st.sidebar.markdown("**Context:**")
+        st.sidebar.markdown(input_text)
 
+    # === ANALYSIS (shared by canonical, linked, and custom) ===
     if input_text:
         conn   = sqlite3.connect(DB_NAME)
-        tokens = [w.lower().strip(".,!?;:\"()") for w in input_text.split()]
-        logger.info("🔍 Analysing '%s' — %d tokens", choice, len(tokens))
+        tokens = tokenise(input_text)
+        # Deduplicate for lexicon lookup but preserve all for coverage calculation
+        unique_tokens = list(dict.fromkeys(tokens))   # ordered deduplicated
+        meaningful_tokens = [t for t in unique_tokens if len(t) > 2]  # skip stopwords <3 chars
+
+        logger.info("🔍 Analysing — %d total tokens, %d unique, %d meaningful",
+                    len(tokens), len(unique_tokens), len(meaningful_tokens))
+
         df = pd.read_sql_query(
-            f"SELECT * FROM lexicon WHERE word IN ({','.join(['?']*len(tokens))})",
-            conn, params=tokens
+            f"SELECT * FROM lexicon WHERE word IN ({','.join(['?']*len(meaningful_tokens))})",
+            conn, params=meaningful_tokens
         )
         conn.close()
-        logger.info("📊 Matched %d lexicon rows for analysis", len(df))
+
+        matched_words = set(df['word'].tolist()) if not df.empty else set()
+        unmatched_words = sorted([t for t in meaningful_tokens if t not in matched_words])
+        coverage_pct = round(100 * len(matched_words) / len(meaningful_tokens), 1) if meaningful_tokens else 0
+        avg_dict = None   # set below if matches found
+
+        logger.info("📊 Coverage: %d/%d meaningful tokens matched (%.1f%%)",
+                    len(matched_words), len(meaningful_tokens), coverage_pct)
 
         if df.empty:
-            st.warning("No lexicon matches found for this text. Try a different passage or expand the lexicon.")
+            st.warning("No lexicon matches found. Try a different passage or expand the lexicon.")
+            # Still show coverage report so user knows what to do
         else:
             avg_dict = df[DIMS].mean().to_dict()
             logger.info("📐 Avg vector: %s", {k: round(v,3) for k,v in avg_dict.items()})
 
             if st.session_state.get('synth_active', False):
                 # --- SYNTHESIS (MERGED) VIEW ---
-                st.plotly_chart(make_overlay_figure(avg_dict, avg_dict), use_container_width=True)
-                render_diagnostics(run_diagnostics(avg_dict))
+                st.plotly_chart(make_overlay_figure(avg_dict, avg_dict))
+                render_proximity_meters(avg_dict)
                 _, btn_col, _ = st.columns([2, 1, 2])
                 with btn_col:
-                    if st.button("🔓 De-Merge Lenses", use_container_width=True):
+                    if st.button("🔓 De-Merge Lenses", width="stretch"):
                         st.session_state.synth_active = False
                         st.rerun()
                 st.markdown("### 🌪️ Synthesized Topological Meaning")
@@ -517,26 +691,24 @@ if page == "Main Analysis":
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("### MATERIALIST LENS")
-                    fig = make_radar_figure_animated(
+                    st.plotly_chart(make_radar_figure_animated(
                         MAT_DIMS, avg_dict,
                         fillcolor='rgba(255,80,80,0.2)',
                         line_color='rgba(255,80,80,0.9)'
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                    ))
                 with c2:
                     st.markdown("### DHARMIC-ESSENTIALIST LENS")
-                    fig = make_radar_figure_animated(
+                    st.plotly_chart(make_radar_figure_animated(
                         DHARMIC_DIMS, avg_dict,
                         fillcolor='rgba(80,130,255,0.2)',
                         line_color='rgba(80,130,255,0.9)'
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                    ))
 
-                render_diagnostics(run_diagnostics(avg_dict))
+                render_proximity_meters(avg_dict)
 
                 _, btn_col, _ = st.columns([2, 1, 2])
                 with btn_col:
-                    if st.button("🌪️ Synthesize (Overlay Lenses)", use_container_width=True):
+                    if st.button("🌪️ Synthesize (Overlay Lenses)", width="stretch"):
                         st.session_state.synth_active = True
                         st.rerun()
 
@@ -552,6 +724,119 @@ if page == "Main Analysis":
                     st.markdown("**Dharmic-Essentialist Lens**")
                     for k in DHARMIC_DIMS:
                         st.write(f"• **{avg_dict[k]:.2f}** {lin.get(k,{}).get('school','?')}: {lin.get(k,{}).get('desc','')}")
+
+        # --- COVERAGE REPORT (always shown, regardless of match count) ---
+        st.markdown("---")
+        st.markdown("### 📊 Lexicon Coverage Report")
+
+        # Coverage meter
+        if coverage_pct >= 60:
+            bar_colour = "#2ecc71"
+            confidence = "High"
+        elif coverage_pct >= 30:
+            bar_colour = "#f39c12"
+            confidence = "Moderate"
+        else:
+            bar_colour = "#e74c3c"
+            confidence = "Low"
+
+        # Low-mu interpretation — only shown when coverage is reasonable but magnitude is low
+        if len(matched_words) >= 8 and not df.empty:
+            mu = float(df[DIMS].abs().mean().mean())
+            if mu < 0.25:
+                st.info(
+                    "🔮 **Low mean magnitude detected** (μ={:.3f}) — This text's vocabulary "
+                    "approaches or transcends the framework's dimensional poles. "
+                    "Concepts of radical renunciation, metaphysical abstraction, or pure "
+                    "ontological negation systematically score near-zero across all axes "
+                    "because they oppose or dissolve the distinctions the framework measures. "
+                    "This is a philosophically coherent result, not a coverage gap.".format(mu)
+                )
+
+        st.markdown(
+            f"""<div style="background:#1a1a2e;border-radius:8px;padding:16px 20px;margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+                <span style="color:#aaa;font-size:13px">Lexicon coverage</span>
+                <span style="color:{bar_colour};font-size:22px;font-weight:700">{coverage_pct}%</span>
+              </div>
+              <div style="background:#333;border-radius:4px;height:8px;width:100%">
+                <div style="background:{bar_colour};border-radius:4px;height:8px;width:{min(coverage_pct,100)}%"></div>
+              </div>
+              <div style="margin-top:8px;color:#888;font-size:12px">
+                <b style="color:#ccc">{len(matched_words)}</b> of <b style="color:#ccc">{len(meaningful_tokens)}</b> meaningful tokens recognised
+                &nbsp;·&nbsp; Confidence: <b style="color:{bar_colour}">{confidence}</b>
+              </div>
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+        # Low-μ interpretive note — shown when matched words average near-zero magnitude
+        if avg_dict is not None:
+            mu_val = float(np.mean(np.abs(np.array([avg_dict[d] for d in DIMS]))))
+            if mu_val < 0.25:
+                st.markdown(
+                    f"""<div style="background:#1a2a1a;border-left:3px solid #5d8a5e;
+                        padding:10px 14px;border-radius:4px;margin:8px 0 12px 0;font-size:13px">
+                        <span style="color:#8db88e;font-weight:600">🔮 Low mean magnitude detected</span>
+                        &nbsp;<span style="color:#666;font-size:11px">(μ={mu_val:.3f})</span><br>
+                        <span style="color:#aaa">This text's vocabulary approaches or transcends the framework's
+                        dimensional poles — a signature of radical renunciation, metaphysical abstraction,
+                        or highly contextual language that points <em>beyond</em> the measurement space
+                        rather than filling it. The directional pattern across dimensions is still
+                        meaningful; the absolute magnitudes are not the signal here.</span>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
+                logger.info("🔮 Low-μ note rendered (μ=%.3f)", mu_val)
+
+        if unmatched_words:
+            with st.expander(f"🔍 {len(unmatched_words)} unrecognised words — expand to see & act"):
+                # Show the words as pills
+                pills_html = " ".join(
+                    f'<span style="display:inline-block;background:#2a2a3e;border:1px solid #444;'
+                    f'border-radius:12px;padding:3px 10px;margin:3px;font-size:12px;color:#ccc">'
+                    f'{w}</span>'
+                    for w in unmatched_words[:80]
+                )
+                if len(unmatched_words) > 80:
+                    pills_html += f'<span style="color:#888;font-size:12px"> … and {len(unmatched_words)-80} more</span>'
+                st.markdown(pills_html, unsafe_allow_html=True)
+
+                st.markdown("---")
+                st.markdown("#### 🛠️ How to add these words to the lexicon")
+                st.markdown(
+                    """**Option 1 — Add to an existing tranche** (fastest):
+
+1. Open `tranche_master.json` in your fork
+2. Find the most relevant tranche key (e.g. `Tranche_6_Political_Contemporary`)
+3. Add your words to the list
+4. Run: `python agent_expand.py` (with `DRY_RUN=True` first to preview, then `False` to commit)
+
+**Option 2 — Create a new tranche** (for a distinct vocabulary domain):
+
+1. Add a new key to `TRANCHES` in `tranche_master.json`, e.g. `"Tranche_7_My_Domain": ["word1", "word2", ...]`
+2. Run `agent_expand.py` — it will process your new tranche automatically
+
+**Option 3 — Add individual words via the Admin interface**:
+
+Navigate to **Admin & Logs → Lexicon Browser → Add / Update Word** and enter vectors manually.
+Use this for high-priority terms where you want precise philosophical control.
+
+> 💡 You need an LLM API key for Options 1 & 2 (set the variable named in llm_config.json → api_key_env_var). See **Appendix A.5.3** in the paper.
+> Fork the repo first so your additions are preserved: **github.com/prakar/the-fluttering-sail**"""
+                )
+
+                # Download the unmatched words as a text file for easy copy-paste into tranche
+                unmatched_csv = "\n".join(f'"{w}",' for w in unmatched_words)
+                st.download_button(
+                    "⬇️ Download unrecognised words as JSON array fragment",
+                    data=f"[\n{unmatched_csv}\n]",
+                    file_name="unrecognised_words.txt",
+                    mime="text/plain",
+                    help="Paste directly into a tranche list in tranche_master.json"
+                )
+        else:
+            st.success("✅ All meaningful tokens in this passage are recognised by the lexicon.")
 
 # ===========================================================================
 # PAGE: SANSKRIT NON-TRANSLATABLES
@@ -596,7 +881,7 @@ elif page == "Sanskrit Non-Translatables":
                         selected_term, {k: round(v,3) for k,v in v_dict.items()})
 
             fig = make_radar_figure(DIMS, v_dict, title=selected_term, height=480)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig)
 
             st.markdown("#### 📐 Dimensional Breakdown")
             lin = SCHEMA.get("LINEAGE_MAP", {})
@@ -610,7 +895,7 @@ elif page == "Sanskrit Non-Translatables":
                     "Polarity": "↙ Antagonistic" if raw < 0 else "▲ Aligned",
                     "Label": lin.get(k, {}).get("friendly_display", ""),
                 })
-            st.dataframe(pd.DataFrame(rows_disp), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(rows_disp), width="stretch", hide_index=True)
 
             res, h = get_cached_synthesis(selected_term, v_dict)
             if res:
@@ -640,11 +925,39 @@ elif page == "Admin & Logs":
     # ---- TAB: Cache Viewer ------------------------------------------------
     with t_db:
         st.markdown("### AI Synthesis Cache")
+        st.caption(
+            "Each entry is a cached LLM synthesis response. "
+            "Delete an entry to force regeneration — useful when tuning the synthesis prompt."
+        )
+
         conn = sqlite3.connect(DB_NAME)
-        df_cache = pd.read_sql_query("SELECT * FROM synthesis_cache", conn)
+        df_cache = pd.read_sql_query("SELECT hash, response FROM synthesis_cache", conn)
         conn.close()
-        st.caption(f"{len(df_cache)} cached responses")
-        st.dataframe(df_cache, use_container_width=True)
+
+        if df_cache.empty:
+            st.info("Cache is empty.")
+        else:
+            st.caption(f"{len(df_cache)} cached responses")
+            for idx, row in df_cache.iterrows():
+                h = row['hash']
+                preview = str(row['response'])[:120].replace('\n', ' ')
+                col_text, col_btn = st.columns([10, 1])
+                with col_text:
+                    st.markdown(
+                        f"""<div style="background:#1a1a2e;border-left:3px solid #444;
+                            padding:8px 12px;border-radius:4px;margin:4px 0;font-size:12px;color:#bbb">
+                            <span style="color:#666;font-size:10px">{h[:12]}…</span><br>
+                            {preview}…
+                        </div>""",
+                        unsafe_allow_html=True
+                    )
+                with col_btn:
+                    if st.button("🗑️", key=f"del_cache_{h}", help="Delete this cache entry"):
+                        conn = sqlite3.connect(DB_NAME)
+                        conn.execute("DELETE FROM synthesis_cache WHERE hash = ?", (h,))
+                        conn.commit(); conn.close()
+                        logger.info("🗑️ Cache entry deleted: %s…", h[:12])
+                        st.rerun()
 
     # ---- TAB: Lexicon Browser ---------------------------------------------
     with t_lexicon:
@@ -663,7 +976,7 @@ elif page == "Admin & Logs":
             df_lex = df_lex[df_lex['word'].str.contains(search, case=False)]
 
         st.caption(f"{len(df_lex)} entries shown")
-        st.dataframe(df_lex, use_container_width=True, hide_index=True)
+        st.dataframe(df_lex, width="stretch", hide_index=True)
 
         # Quick per-word radar
         st.markdown("#### 🔭 Quick Radar for any word")
@@ -672,7 +985,7 @@ elif page == "Admin & Logs":
             pick = st.selectbox("Pick word", all_words)
             row  = df_lex[df_lex['word'] == pick].iloc[0]
             vd   = {k: row[k] for k in DIMS}
-            st.plotly_chart(make_radar_figure(DIMS, vd, title=pick, height=380), use_container_width=True)
+            st.plotly_chart(make_radar_figure(DIMS, vd, title=pick, height=380))
 
         # ---- Add new word
         st.markdown("---")
@@ -716,8 +1029,8 @@ elif page == "Admin & Logs":
                 colors = {"ERROR": "background-color:#5c1a1a", "WARNING": "background-color:#4a3a00", "INFO": ""}
                 return colors.get(val, "")
             st.dataframe(
-                log_df.style.applymap(level_color, subset=["Level"]),
-                use_container_width=True, hide_index=True
+                log_df.style.map(level_color, subset=["Level"]),
+                width="stretch", hide_index=True
             )
             if st.button("🔃 Refresh Log"):
                 st.rerun()
@@ -729,7 +1042,7 @@ elif page == "Admin & Logs":
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("#### 🔥 Nuke AI Cache")
-            st.caption("Clears all GPT-4o synthesis cache. Re-analysis will re-call the API.")
+            st.caption("Clears all LLM synthesis cache. Re-analysis will re-call the configured provider.")
             if st.button("🔥 NUKE CACHE"):
                 conn = sqlite3.connect(DB_NAME)
                 conn.execute("DELETE FROM synthesis_cache")
@@ -791,7 +1104,7 @@ elif page == "Admin & Logs":
         stats = pd.read_sql_query("SELECT source, COUNT(*) as count FROM lexicon GROUP BY source ORDER BY count DESC", conn)
         cache_count = conn.execute("SELECT COUNT(*) FROM synthesis_cache").fetchone()[0]
         conn.close()
-        st.dataframe(stats, use_container_width=True, hide_index=True)
+        st.dataframe(stats, width="stretch", hide_index=True)
         st.caption(f"Synthesis cache: {cache_count} entries")
 
     # ---- TAB: Script Runner -----------------------------------------------
@@ -812,9 +1125,9 @@ elif page == "Admin & Logs":
                 "warn": None,
                 "dry_patch": True,
             },
-            "agent_expand.py — LIVE RUN (writes to DB, calls OpenAI API 💰)": {
+            "agent_expand.py — LIVE RUN (writes to DB, calls LLM API 💰))": {
                 "cmd": ["python3", "agent_expand.py"],
-                "warn": "⚠️ This will call the OpenAI API and WRITE to epistemic_lexicon.db. API costs apply (~$0.10–0.30). Are you sure?",
+                "warn": "⚠️ This will call the LLM API and WRITE to epistemic_lexicon.db. API costs apply. Are you sure?",
                 "dry_patch": False,
             },
         }

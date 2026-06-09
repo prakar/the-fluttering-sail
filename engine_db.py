@@ -14,17 +14,28 @@ import sqlite3
 import json
 import logging
 import os
-from tranche_master import SEEDS
 
 # --- 1. CONFIGURATION & AUDIT ---
-DB_NAME = "epistemic_lexicon.db"
-LOG_FILE = "framework.log"
+DB_NAME          = "epistemic_lexicon.db"
+LOG_FILE         = "framework.log"
+TRANCHE_FILE     = "tranche_master.json"
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.FileHandler(LOG_FILE, mode='a'), logging.StreamHandler()]
 )
+
+# Load SEEDS from tranche_master.json (replaces: from tranche_master import SEEDS)
+if not os.path.exists(TRANCHE_FILE):
+    logging.error("❌ %s not found. Cannot seed database.", TRANCHE_FILE)
+    raise SystemExit(1)
+
+with open(TRANCHE_FILE) as f:
+    _tranche_data = json.load(f)
+
+SEEDS = _tranche_data.get("SEEDS", {})
+logging.info("✅ Loaded %d seeds from %s", len(SEEDS), TRANCHE_FILE)
 
 # --- 2. CORE DATABASE OPERATIONS ---
 

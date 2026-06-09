@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "description": "The Fluttering Sail — LLM Provider Configuration",
+    "version": "1.0",
+    "note": "This file controls which LLM provider is used for ingestion (agent_expand.py) and synthesis (app.py). All providers must expose an OpenAI-compatible API. Most major providers do: OpenAI natively, Anthropic via compatibility layer, Google via OpenRouter, local models via Ollama. To use a non-OpenAI-compatible provider natively (e.g. direct Anthropic SDK, direct Google SDK), a provider adapter would be required — see Future Work in the paper.",
+    "_note_openai_compatible": "OpenAI-compatible means the provider accepts POST requests to /v1/chat/completions with the same JSON body structure as OpenAI and returns responses in the same format. This is now an industry standard. OpenRouter (openrouter.ai) proxies 100+ models behind this interface and is the recommended approach for switching models without code changes."
+  },
+
+  "provider": "openai",
+  "_note_provider": "Identifier for the provider — used only for logging. Does not affect API calls. Examples: openai, anthropic-via-openrouter, gemini-via-openrouter, groq, ollama-local",
+
+  "api_key_env_var": "OPENAI_API_KEY",
+  "_note_api_key_env_var": "Name of the environment variable containing the API key. The application reads os.environ[api_key_env_var]. Common values: OPENAI_API_KEY (OpenAI), OPENROUTER_API_KEY (OpenRouter — works for Claude/Gemini/Llama), GROQ_API_KEY (Groq), ANTHROPIC_API_KEY (Anthropic native — requires adapter). Set with: export YOUR_KEY_NAME=sk-...",
+
+  "base_url": "https://api.openai.com/v1",
+  "_note_base_url": "API base URL. Change this to switch providers without touching Python. Examples: https://api.openai.com/v1 (OpenAI default), https://openrouter.ai/api/v1 (OpenRouter — access Claude/Gemini/Llama with same code), http://localhost:11434/v1 (Ollama local), https://api.groq.com/openai/v1 (Groq). The /v1/chat/completions path is appended automatically.",
+
+  "timeout_seconds": 60,
+  "_note_timeout_seconds": "Request timeout in seconds. Increase for slower local models or large batches. Default 60 is adequate for GPT-4o and most cloud providers."
+}
