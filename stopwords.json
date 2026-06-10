@@ -1,0 +1,61 @@
+{
+  "__meta__": {
+    "description": "The Fluttering Sail — Philosophical Stopword List",
+    "version": "1.0",
+    "note": "Words in this list are excluded from ingestion by default. They appear pre-unchecked in the Coverage Report review step. A researcher may override any entry via the UI checkbox. Edit this file to add domain-specific words that are trivial in your context, or REMOVE words that carry philosophical weight in your domain. One researcher's stopword is another's keyword — this list is intentionally conservative.",
+    "source": "Derived from NLTK English stopwords corpus plus common verbs and generic nouns with no context-independent philosophical specificity.",
+    "methodology_note": "Borderline words (e.g. 'word', 'air', 'water', 'lord') are deliberately NOT in this list. Their philosophical weight is context-dependent and should be decided by the researcher at review time."
+  },
+
+  "_note_how_to_edit": "Add a word to exclude it from ingestion by default. Remove a word to make it appear in the philosophical vocabulary column (pre-checked) in the review UI. All changes take effect immediately without restarting the app.",
+
+  "articles_determiners": {
+    "_note": "Function words with no semantic content independent of context.",
+    "words": ["a", "an", "the", "this", "that", "these", "those", "any", "all", "both", "each", "every", "either", "neither", "no", "some", "such"]
+  },
+
+  "pronouns": {
+    "_note": "Personal, reflexive, and relative pronouns.",
+    "words": ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "whose"]
+  },
+
+  "prepositions": {
+    "_note": "Spatial and relational prepositions with no standalone philosophical weight.",
+    "words": ["at", "by", "for", "from", "in", "into", "of", "off", "on", "onto", "out", "over", "per", "than", "through", "to", "up", "via", "with", "within", "without", "about", "above", "across", "after", "against", "along", "among", "around", "before", "behind", "below", "beneath", "beside", "between", "beyond", "down", "during", "except", "inside", "near", "outside", "since", "toward", "under", "until", "upon"]
+  },
+
+  "conjunctions": {
+    "_note": "Logical connectives and subordinating conjunctions.",
+    "words": ["and", "but", "or", "nor", "so", "yet", "as", "although", "because", "since", "unless", "until", "while", "whereas", "though", "if", "whether", "when", "where", "how"]
+  },
+
+  "auxiliaries": {
+    "_note": "Auxiliary and modal verbs. Note: 'be', 'will', 'should' have philosophical uses in normative contexts but are too ambiguous at the token level to be reliable signals.",
+    "words": ["be", "been", "being", "am", "is", "are", "was", "were", "have", "has", "had", "having", "do", "does", "did", "doing", "will", "would", "shall", "should", "may", "might", "must", "can", "could", "ought", "need", "dare", "used"]
+  },
+
+  "adverbs_particles": {
+    "_note": "Common adverbs and particles. 'Never', 'always', 'only' can carry normative weight in context but are too ambiguous as standalone tokens.",
+    "words": ["not", "no", "nor", "never", "ever", "always", "often", "just", "also", "too", "very", "more", "most", "less", "least", "much", "many", "only", "even", "still", "already", "now", "then", "here", "there", "where", "when", "why", "again", "further", "once", "same", "other", "another", "own", "few", "both"]
+  },
+
+  "generic_nouns": {
+    "_note": "High-frequency nouns whose philosophical import depends entirely on context. Researchers in phenomenology or philosophy of time may want to remove 'time', 'place', 'form' from this list.",
+    "words": ["thing", "things", "way", "ways", "time", "times", "place", "places", "part", "parts", "point", "points", "case", "cases", "side", "sides", "kind", "kinds", "form", "forms", "sort", "sorts", "type", "types", "lot", "lots", "bit", "bits", "set", "sets", "end", "ends", "number", "numbers", "amount", "amounts", "level", "levels", "line", "lines", "hand", "hands", "head", "face", "eye", "eyes", "day", "days", "week", "weeks", "year", "years", "hour", "hours"]
+  },
+
+  "generic_verbs": {
+    "_note": "High-frequency verbs with no reliable philosophical signal at the token level. 'Know', 'think', 'feel' have epistemological uses but are too common in non-philosophical contexts to be reliable.",
+    "words": ["go", "goes", "went", "gone", "going", "get", "gets", "got", "gotten", "getting", "make", "makes", "made", "making", "take", "takes", "took", "taken", "taking", "come", "comes", "came", "coming", "give", "gives", "gave", "given", "giving", "know", "knows", "knew", "known", "knowing", "think", "thinks", "thought", "thinking", "see", "sees", "saw", "seen", "seeing", "look", "looks", "looked", "looking", "want", "wants", "wanted", "wanting", "use", "uses", "used", "using", "find", "finds", "found", "finding", "tell", "tells", "told", "telling", "ask", "asks", "asked", "asking", "seem", "seems", "seemed", "seeming", "feel", "feels", "felt", "feeling", "try", "tries", "tried", "trying", "leave", "leaves", "left", "leaving", "call", "calls", "called", "calling", "keep", "keeps", "kept", "keeping", "let", "lets", "letting", "put", "puts", "putting", "mean", "means", "meant", "meaning", "move", "moves", "moved", "moving", "turn", "turns", "turned", "turning", "show", "shows", "showed", "shown", "showing", "play", "plays", "played", "playing", "run", "runs", "ran", "running", "hold", "holds", "held", "holding", "bring", "brings", "brought", "bringing"]
+  },
+
+  "contractions": {
+    "_note": "Diacritic-stripped contraction forms that appear after tokenisation.",
+    "words": ["dont", "doesnt", "didnt", "wont", "wouldnt", "shouldnt", "couldnt", "cant", "isnt", "arent", "wasnt", "werent", "hasnt", "havent", "hadnt", "im", "ive", "id", "ill", "youre", "youve", "youd", "youll", "hes", "shes", "weve", "wed", "well", "theyre", "theyve", "thats", "theres", "whats", "whos"]
+  },
+
+  "numbers": {
+    "_note": "Cardinal and ordinal numbers as words.",
+    "words": ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "hundred", "thousand", "million", "billion", "first", "second", "third", "fourth", "fifth"]
+  }
+}

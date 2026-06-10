@@ -55,6 +55,8 @@ from datetime import datetime
 # Diagnostic engine is a standalone module — see diagnostics_engine.py
 # Importing here registers its logger into the same logging hierarchy
 from diagnostics_engine import run_diagnostics, render_diagnostics, render_proximity_meters
+from ingestion_engine import ingest_words, CHUNK_SIZE as _CHUNK_SIZE, filter_stopwords, is_stopword, STOPWORDS
+from radar import make_radar_figure, make_overlay_figure
 
 # ---------------------------------------------------------------------------
 # 1. LOGGING — in-memory capture for the Admin log viewer
@@ -161,13 +163,33 @@ def load_assets():
 
 
 def init_db():
-    """Ensure synthesis_cache table exists. Safe to call on every startup."""
+    """
+    Ensure required tables exist. Safe to call on every startup.
+
+    Tables:
+      synthesis_cache   — cached LLM narration responses (hash → text)
+      ingestion_queue   — persistent queue of unrecognised words awaiting ingestion
+                          Records are never deleted; status flag controls visibility.
+                          status: 'pending' | 'ingested'
+    """
     try:
         conn = sqlite3.connect(DB_NAME)
         conn.execute(
             "CREATE TABLE IF NOT EXISTS synthesis_cache "
             "(hash TEXT PRIMARY KEY, response TEXT)"
         )
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ingestion_queue (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_label  TEXT NOT NULL,
+                words_json    TEXT NOT NULL,
+                word_count    INTEGER NOT NULL,
+                queued_at     TEXT NOT NULL,
+                status        TEXT NOT NULL DEFAULT 'pending',
+                ingested_at   TEXT,
+                notes         TEXT
+            )
+        """)
         conn.commit()
         conn.close()
         logger.info("✅ DB ready: %s", DB_NAME)
@@ -177,6 +199,78 @@ def init_db():
 
 load_assets()
 init_db()
+
+# ---------------------------------------------------------------------------
+# INGESTION QUEUE HELPERS
+# ---------------------------------------------------------------------------
+_GPT4O_INPUT_PRICE_PER_1M = 5.00   # USD — update if pricing changes
+_PROMPT_OVERHEAD_TOKENS   = 850    # system prompt + instruction overhead per chunk
+_CHUNK_SIZE               = 10     # words per API call
+
+def estimate_cost(n_words: int) -> tuple[int, float]:
+    """Return (estimated_tokens, estimated_usd) for ingesting n_words."""
+    n_chunks = max(1, -(-n_words // _CHUNK_SIZE))   # ceiling division
+    tokens   = n_chunks * (_PROMPT_OVERHEAD_TOKENS + _CHUNK_SIZE * 15)
+    cost     = tokens * _GPT4O_INPUT_PRICE_PER_1M / 1_000_000
+    return tokens, cost
+
+
+def add_to_queue(source_label: str, words: list) -> bool:
+    """
+    Add a batch of unrecognised words to the persistent ingestion queue.
+    Deduplicates: if an identical (source_label, word_set) entry with status='pending'
+    already exists, it is replaced rather than duplicated.
+    Returns True on success.
+    """
+    if not words:
+        return False
+    try:
+        from datetime import datetime as _dt
+        conn = sqlite3.connect(DB_NAME)
+        # Remove any existing pending entry for same source
+        conn.execute(
+            "DELETE FROM ingestion_queue WHERE source_label=? AND status='pending'",
+            (source_label,)
+        )
+        conn.execute(
+            "INSERT INTO ingestion_queue "
+            "(source_label, words_json, word_count, queued_at, status) "
+            "VALUES (?,?,?,?,?)",
+            (source_label, json.dumps(words), len(words),
+             _dt.now().strftime("%Y-%m-%d %H:%M:%S"), "pending")
+        )
+        conn.commit()
+        conn.close()
+        logger.info("📥 Queue: added %d words for '%s'", len(words), source_label)
+        return True
+    except Exception as exc:
+        logger.error("❌ Queue add failed: %s", exc)
+        return False
+
+
+def get_queue(include_ingested: bool = False) -> list:
+    """Return queue entries as list of dicts, newest first."""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        if include_ingested:
+            rows = conn.execute(
+                "SELECT id,source_label,word_count,queued_at,status,ingested_at "
+                "FROM ingestion_queue ORDER BY id DESC"
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id,source_label,word_count,queued_at,status,ingested_at "
+                "FROM ingestion_queue WHERE status='pending' ORDER BY id DESC"
+            ).fetchall()
+        conn.close()
+        return [
+            dict(id=r[0], source_label=r[1], word_count=r[2],
+                 queued_at=r[3], status=r[4], ingested_at=r[5])
+            for r in rows
+        ]
+    except Exception as exc:
+        logger.error("❌ Queue fetch failed: %s", exc)
+        return []
 
 # ---------------------------------------------------------------------------
 # 5. TOKENISATION
@@ -272,159 +366,27 @@ import numpy as np  # needed for radar figure computations
 # --- 3. LOGIC ENGINES ---
 
 def _radar_range(keys_list: list, *data_dicts) -> float:
-    """Compute radial axis ceiling: max abs value across all traces + 15% padding, capped [0.5, 1.0]."""
-    vals = []
-    for d in data_dicts:
-        vals.extend(abs(d.get(k, 0)) for k in keys_list)
-    peak = max(vals) if vals else 0.6
-    ceiling = min(max(round(peak * 1.15, 2), 0.5), 1.0)
-    return ceiling
+    """Retained for any internal callers — delegates to radar.py."""
+    from radar import _radar_range as _rr
+    return _rr(keys_list, *data_dicts)
 
 
-def make_radar_figure(keys_list, data_dict, title=None, fillcolor=None, line_color=None, height=420):
-    """
-    Dual-trace Scatterpolar.
-    - Trace 1 (blue): aligned dimensions (raw >= 0), clamped to 0 where negative.
-    - Trace 2 (orange): antagonistic dimensions (raw < 0), abs() value, clamped to 0 where positive.
-    Angular labels carry '↙ (Antagonistic)' marker on negative spokes.
-    Radial range is computed dynamically so spokes fill ~85% of the canvas without clipping.
-    """
-    lineage_map = SCHEMA.get("LINEAGE_MAP", {})
-    labels, aligned_vals, antag_vals = [], [], []
-
-    for k in keys_list:
-        raw = data_dict.get(k, 0)
-        mapping = lineage_map.get(k.lower(), {})
-        friendly = mapping.get("friendly_display", k)
-        if raw < 0:
-            label_text = f"↙ {friendly}<br><i>(Antagonistic)</i>"
-            aligned_vals.append(0)
-            antag_vals.append(abs(raw))
-        else:
-            label_text = friendly.replace(" (", "<br>(")
-            aligned_vals.append(raw)
-            antag_vals.append(0)
-        logger.debug("📍 Radar '%s' raw=%.3f antagonistic=%s", k, raw, raw < 0)
-        labels.append(label_text)
-
-    # Close polygon
-    labels_c       = labels       + [labels[0]]
-    aligned_vals_c = aligned_vals + [aligned_vals[0]]
-    antag_vals_c   = antag_vals   + [antag_vals[0]]
-
-    r_max = _radar_range(keys_list, data_dict)
-    tick_step = 0.25
-    ticks = [round(i * tick_step, 2) for i in range(int(r_max / tick_step) + 1)]
-
-    aligned_color = fillcolor  or 'rgba(100,160,255,0.25)'
-    aligned_line  = line_color or 'rgba(100,160,255,0.9)'
-
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(
-        r=aligned_vals_c, theta=labels_c,
-        fill='toself', fillcolor=aligned_color,
-        line=dict(color=aligned_line, width=2),
-        name='Aligned',
-    ))
-    fig.add_trace(go.Scatterpolar(
-        r=antag_vals_c, theta=labels_c,
-        fill='toself', fillcolor='rgba(255,140,0,0.20)',
-        line=dict(color='rgba(255,140,0,0.9)', width=2, dash='dot'),
-        name='Antagonistic',
-    ))
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[0, r_max],
-                tickfont=dict(size=9),
-                tickvals=ticks,
-            ),
-            angularaxis=dict(tickfont=dict(size=11)),
-            hole=0.0,
-            domain=dict(x=[0.0, 1.0], y=[0.0, 1.0]),
-        ),
-        height=height,
-        margin=dict(l=70, r=70, t=50, b=70),
-        showlegend=True,
-        legend=dict(orientation='h', y=-0.08, font=dict(size=11)),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-    )
-    return fig
+def _make_radar(keys_list, data_dict, **kwargs):
+    """Thin wrapper that passes SCHEMA through to radar.py."""
+    return make_radar_figure(keys_list, data_dict, schema=SCHEMA, **kwargs)
 
 
-def make_overlay_figure(mat_dict, dharmic_dict, height=520):
-    """Synthesis view: both lenses on a single 8-axis radar, dual-trace per lens."""
-    lineage_map = SCHEMA.get("LINEAGE_MAP", {})
-
-    def extract(keys, d):
-        labs, aligned, antag = [], [], []
-        for k in keys:
-            raw = d.get(k, 0)
-            m = lineage_map.get(k.lower(), {})
-            friendly = m.get("friendly_display", k)
-            label = f"↙ {friendly}<br><i>(Antagonistic)</i>" if raw < 0 else friendly.replace(" (", "<br>(")
-            labs.append(label)
-            aligned.append(max(raw, 0))
-            antag.append(abs(min(raw, 0)))
-        return labs, aligned, antag
-
-    ml, ma, mx = extract(MAT_DIMS, mat_dict)
-    el, ea, ex = extract(DHARMIC_DIMS, dharmic_dict)
-
-    fig = go.Figure()
-    # Materialist aligned
-    fig.add_trace(go.Scatterpolar(
-        r=ma + [ma[0]], theta=ml + [ml[0]],
-        fill='toself', fillcolor='rgba(255,80,80,0.2)',
-        line=dict(color='rgba(255,80,80,0.9)', width=2),
-        name='Materialist — Aligned'
-    ))
-    # Materialist antagonistic
-    fig.add_trace(go.Scatterpolar(
-        r=mx + [mx[0]], theta=ml + [ml[0]],
-        fill='toself', fillcolor='rgba(255,140,0,0.15)',
-        line=dict(color='rgba(255,140,0,0.9)', width=2, dash='dot'),
-        name='Materialist — Antagonistic'
-    ))
-    # Dharmic aligned
-    fig.add_trace(go.Scatterpolar(
-        r=ea + [ea[0]], theta=el + [el[0]],
-        fill='toself', fillcolor='rgba(80,130,255,0.2)',
-        line=dict(color='rgba(80,130,255,0.9)', width=2),
-        name='Dharmic — Aligned'
-    ))
-    # Dharmic antagonistic
-    fig.add_trace(go.Scatterpolar(
-        r=ex + [ex[0]], theta=el + [el[0]],
-        fill='toself', fillcolor='rgba(160,80,255,0.15)',
-        line=dict(color='rgba(160,80,255,0.9)', width=2, dash='dot'),
-        name='Dharmic — Antagonistic'
-    ))
-    all_keys = MAT_DIMS + DHARMIC_DIMS
-    r_max = _radar_range(all_keys, mat_dict, dharmic_dict)
-    tick_step = 0.25
-    ticks = [round(i * tick_step, 2) for i in range(int(r_max / tick_step) + 1)]
-
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0, r_max], tickfont=dict(size=9),
-                            tickvals=ticks),
-            angularaxis=dict(tickfont=dict(size=11)),
-            domain=dict(x=[0.0, 1.0], y=[0.0, 1.0]),
-        ),
-        height=height,
-        margin=dict(l=70, r=70, t=50, b=70),
-        legend=dict(orientation='h', y=-0.18, font=dict(size=10)),
-        paper_bgcolor='rgba(0,0,0,0)',
-    )
-    return fig
+def _make_overlay(mat_dict, dharmic_dict, **kwargs):
+    """Thin wrapper that passes SCHEMA and dim lists through to radar.py."""
+    return make_overlay_figure(mat_dict, dharmic_dict,
+                               schema=SCHEMA,
+                               mat_dims=MAT_DIMS,
+                               dharmic_dims=DHARMIC_DIMS,
+                               **kwargs)
 
 
-# Alias — flutter animation was removed (consumed too much vertical space).
-# The animated name is kept so call sites don't need updating.
-make_radar_figure_animated = make_radar_figure
+# Alias — call sites use these names unchanged
+make_radar_figure_animated = _make_radar
 
 
 def get_cached_synthesis(text_content, vector_dict):
@@ -543,6 +505,14 @@ if page == "Main Analysis":
     LINKED_CORPORA = load_linked_corpora()
 
     choice = st.sidebar.selectbox("Canonical Texts", main_keys)
+
+    # Handle revisit from Ingestion Queue — pre-select the corpus
+    if st.session_state.get('_revisit_corpus') in main_keys:
+        _revisit = st.session_state.pop('_revisit_corpus')
+        st.session_state['_last_dropdown_choice'] = None
+        # Force selectbox to show the revisit corpus on next render
+        st.session_state['_page_override'] = 'Main Analysis'
+        choice = _revisit
 
     # Source card — immediately under dropdown
     if choice in CORPORA:
@@ -691,7 +661,7 @@ if page == "Main Analysis":
 
             if st.session_state.get('synth_active', False):
                 # --- SYNTHESIS (MERGED) VIEW ---
-                st.plotly_chart(make_overlay_figure(avg_dict, avg_dict))
+                st.plotly_chart(_make_overlay(avg_dict, avg_dict))
                 render_proximity_meters(avg_dict)
                 _, btn_col, _ = st.columns([2, 1, 2])
                 with btn_col:
@@ -714,14 +684,14 @@ if page == "Main Analysis":
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("### MATERIALIST LENS")
-                    st.plotly_chart(make_radar_figure_animated(
+                    st.plotly_chart(_make_radar(
                         MAT_DIMS, avg_dict,
                         fillcolor='rgba(255,80,80,0.2)',
                         line_color='rgba(255,80,80,0.9)'
                     ))
                 with c2:
                     st.markdown("### DHARMIC-ESSENTIALIST LENS")
-                    st.plotly_chart(make_radar_figure_animated(
+                    st.plotly_chart(_make_radar(
                         DHARMIC_DIMS, avg_dict,
                         fillcolor='rgba(80,130,255,0.2)',
                         line_color='rgba(80,130,255,0.9)'
@@ -858,6 +828,95 @@ Use this for high-priority terms where you want precise philosophical control.
                     mime="text/plain",
                     help="Paste directly into a tranche list in tranche_master.json"
                 )
+
+                st.markdown("---")
+                # Determine source label
+                _queue_source = (
+                    f"Custom Text {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                    if custom_mode else
+                    linked_choice if (linked_choice and linked_choice in LINKED_CORPORA) else
+                    choice
+                )
+                _est_tokens, _est_cost = estimate_cost(len(unmatched_words))
+
+                # Split into philosophical vs stopwords for review
+                _keep_words, _stop_words = filter_stopwords(unmatched_words)
+
+                st.markdown("#### 📥 Review before queueing")
+                st.caption(
+                    f"Stopwords (pre-unchecked) carry no philosophical weight and cost tokens. "
+                    f"Uncheck any words you don't want to ingest."
+                )
+
+                # Two-column word selection
+                rc1, rc2 = st.columns(2)
+                with rc1:
+                    st.markdown(
+                        "<div style='font-size:11px;font-weight:700;text-transform:uppercase;"
+                        "letter-spacing:0.1em;color:#2ecc71;margin-bottom:6px'>"
+                        "✅ Philosophical vocabulary</div>",
+                        unsafe_allow_html=True
+                    )
+                    _selected = []
+                    for w in _keep_words[:60]:
+                        if st.checkbox(w, value=True, key=f"qw_{w}"):
+                            _selected.append(w)
+                    if len(_keep_words) > 60:
+                        st.caption(f"… and {len(_keep_words)-60} more (all included)")
+                        _selected.extend(_keep_words[60:])
+
+                with rc2:
+                    st.markdown(
+                        "<div style='font-size:11px;font-weight:700;text-transform:uppercase;"
+                        "letter-spacing:0.1em;color:#e74c3c;margin-bottom:6px'>"
+                        "⏭ Stopwords (excluded by default)</div>",
+                        unsafe_allow_html=True
+                    )
+                    _selected_stops = []
+                    for w in _stop_words[:60]:
+                        if st.checkbox(w, value=False, key=f"sw_{w}"):
+                            _selected_stops.append(w)
+                    if _stop_words:
+                        st.caption(
+                            f"{len(_stop_words)} stopwords detected — "
+                            f"tick any you want to include anyway."
+                        )
+
+                _final_words = _selected + _selected_stops
+                _est_tokens_f, _est_cost_f = estimate_cost(len(_final_words))
+
+                st.markdown(
+                    f"""<div style="background:#0d1b2e;border:1px solid #2a3a5a;
+                        border-radius:8px;padding:14px 18px;margin-top:8px">
+                      <div style="color:#7ab3e0;font-size:12px;margin-bottom:4px">
+                        <b>{len(_final_words)} words selected</b> for ingestion
+                        &nbsp;·&nbsp; ~{_est_tokens_f:,} tokens
+                        &nbsp;·&nbsp;
+                        <b style="color:#c8a96e">~${_est_cost_f:.3f} USD</b>
+                      </div>
+                      <div style="color:#556;font-size:11px">
+                        Ingest from <b>Admin & Logs → Ingestion Queue</b> when ready
+                      </div>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
+                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+                if st.button(
+                    f"📥  Add {len(_final_words)} words to Ingestion Queue",
+                    key="add_to_queue_btn",
+                    type="primary",
+                    disabled=len(_final_words) == 0
+                ):
+                    if add_to_queue(_queue_source, _final_words):
+                        st.success(
+                            f"✅ {len(_final_words)} words queued from **{_queue_source}**. "
+                            f"Ingest them in **Admin & Logs → Ingestion Queue**."
+                        )
+                        logger.info("📥 Queued %d words from '%s'",
+                                    len(_final_words), _queue_source)
+                    else:
+                        st.error("❌ Failed to add to queue — check Admin logs.")
         else:
             st.success("✅ All meaningful tokens in this passage are recognised by the lexicon.")
 
@@ -937,12 +996,13 @@ elif page == "Sanskrit Non-Translatables":
 elif page == "Admin & Logs":
     st.title("🛠️ Admin & Logs")
 
-    t_db, t_lexicon, t_logs, t_maintenance, t_scripts = st.tabs([
+    t_db, t_lexicon, t_logs, t_maintenance, t_scripts, t_queue = st.tabs([
         "🗃️ Cache Viewer",
         "📚 Lexicon Browser",
         "📋 Live Log",
         "⚙️ Maintenance",
         "🚀 Script Runner",
+        "📥 Ingestion Queue",
     ])
 
     # ---- TAB: Cache Viewer ------------------------------------------------
@@ -1008,7 +1068,7 @@ elif page == "Admin & Logs":
             pick = st.selectbox("Pick word", all_words)
             row  = df_lex[df_lex['word'] == pick].iloc[0]
             vd   = {k: row[k] for k in DIMS}
-            st.plotly_chart(make_radar_figure(DIMS, vd, title=pick, height=380))
+            st.plotly_chart(_make_radar(DIMS, vd, title=pick, height=380))
 
         # ---- Add new word
         st.markdown("---")
@@ -1087,6 +1147,21 @@ elif page == "Admin & Logs":
                 logger.warning("🗑️ Word '%s' deleted from lexicon by admin", del_word)
                 st.success(f"Deleted '{del_word}'")
                 st.rerun()
+
+        st.markdown("---")
+        st.markdown("#### 🔄 Runtime Reloads")
+        st.caption("Re-read config files without restarting the app.")
+        rcol1, rcol2 = st.columns(2)
+        with rcol1:
+            if st.button("🔄 Reload Stopwords"):
+                from ingestion_engine import reload_stopwords
+                n = reload_stopwords()
+                st.success(f"✅ {n} stopwords reloaded from stopwords.json")
+        with rcol2:
+            if st.button("🔄 Reload Thresholds"):
+                from diagnostics_engine import reload_thresholds
+                n = reload_thresholds()
+                st.success(f"✅ {n} thresholds reloaded from diagnostics.json")
 
         st.markdown("---")
         st.markdown("#### 📤 Export Lexicon as CSV")
@@ -1227,8 +1302,231 @@ elif page == "Admin & Logs":
                     if _os.path.exists(tmp):
                         _os.remove(tmp)
 
+    # ---- TAB: Ingestion Queue -------------------------------------------
+    with t_queue:
+        st.markdown("### 📥 Ingestion Queue")
+        st.caption(
+            "Words surfaced by the Coverage Report and queued for ingestion. "
+            "Records are never deleted — ingested and stopword entries are archived for audit. "
+            "Ingest per-bucket or all at once."
+        )
+
+        # One-time cleanup: mark any pending words that are stopwords
+        # Runs on every page load but is fast — only touches pending entries
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            pending_rows = conn.execute(
+                "SELECT id, words_json FROM ingestion_queue WHERE status='pending'"
+            ).fetchall()
+            from datetime import datetime as _dtnow
+            cleaned = 0
+            for row_id, wjson in pending_rows:
+                words_in = json.loads(wjson)
+                keep, stops = filter_stopwords(words_in)
+                if stops:
+                    # Update the words_json to remove stopwords
+                    conn.execute(
+                        "UPDATE ingestion_queue SET words_json=?, word_count=? WHERE id=?",
+                        (json.dumps(keep), len(keep), row_id)
+                    )
+                    cleaned += len(stops)
+            if cleaned:
+                conn.execute(
+                    "INSERT INTO ingestion_queue "
+                    "(source_label, words_json, word_count, queued_at, status, notes) "
+                    "VALUES (?,?,?,?,?,?)",
+                    ("_stopword_cleanup",
+                     json.dumps([]),
+                     0,
+                     _dtnow.now().strftime("%Y-%m-%d %H:%M:%S"),
+                     "stopword",
+                     f"Auto-removed {cleaned} stopwords from pending queue entries")
+                )
+                logger.info("🧹 Queue cleanup: removed %d stopwords from pending entries", cleaned)
+            conn.commit()
+            conn.close()
+            if cleaned:
+                st.info(f"🧹 Removed **{cleaned} stopwords** from pending queue entries — "
+                        f"re-queued with philosophical vocabulary only.")
+        except Exception as exc:
+            logger.error("Queue stopword cleanup failed: %s", exc)
+
+        show_ingested = st.checkbox("Show ingested and stopword (archived) entries", value=False)
+        queue = get_queue(include_ingested=show_ingested)
+
+        if not queue:
+            st.info("Queue is empty. Run an analysis, expand the Coverage Report, "
+                    "and click **Add to Ingestion Queue**.")
+        else:
+            pending = [e for e in queue if e['status'] == 'pending']
+            if pending:
+                # Summary cost estimate across all pending
+                total_words = sum(e['word_count'] for e in pending)
+                total_tokens, total_cost = estimate_cost(total_words)
+                st.markdown(
+                    f"""<div style="background:#0d1b2e;border:1px solid #2a3a5a;
+                        border-radius:8px;padding:14px 18px;margin-bottom:16px;
+                        display:flex;justify-content:space-between;align-items:center">
+                      <div>
+                        <span style="color:#7ab3e0;font-size:13px;font-weight:600">
+                          {len(pending)} pending bucket{"s" if len(pending)!=1 else ""}
+                          · {total_words} words total
+                        </span><br>
+                        <span style="color:#556;font-size:11px">
+                          Estimated: ~{total_tokens:,} tokens
+                          · <b style="color:#c8a96e">~${total_cost:.3f} USD</b>
+                        </span>
+                      </div>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
+                if st.button("⚡ Ingest All Pending", type="primary",
+                             key="ingest_all_btn"):
+                    st.session_state['ingest_all'] = True
+
+            # Per-bucket cards
+            for entry in queue:
+                is_pending = entry['status'] == 'pending'
+                border_col = "#2a3a5a" if is_pending else "#1a2a1a"
+                status_badge = (
+                    '<span style="background:#1a3a2a;color:#2ecc71;font-size:10px;'
+                    'padding:2px 8px;border-radius:10px;font-weight:600">INGESTED</span>'
+                    if entry['status'] == 'ingested' else
+                    '<span style="background:#2a1a1a;color:#e74c3c;font-size:10px;'
+                    'padding:2px 8px;border-radius:10px;font-weight:600">STOPWORD</span>'
+                    if entry['status'] == 'stopword' else
+                    '<span style="background:#1a2a3a;color:#4a90d9;font-size:10px;'
+                    'padding:2px 8px;border-radius:10px;font-weight:600">PENDING</span>'
+                )
+                et, ec = estimate_cost(entry['word_count'])
+
+                with st.container():
+                    st.markdown(
+                        f"""<div style="background:#0d1420;border:1px solid {border_col};
+                            border-radius:8px;padding:14px 18px;margin-bottom:10px">
+                          <div style="display:flex;justify-content:space-between;
+                               align-items:flex-start;margin-bottom:8px">
+                            <div>
+                              <span style="color:#e8f0f8;font-size:14px;font-weight:600">
+                                {entry['source_label']}
+                              </span>
+                              &nbsp;&nbsp;{status_badge}
+                            </div>
+                            <div style="text-align:right;color:#556;font-size:11px">
+                              {entry['word_count']} words
+                              · ~{et:,} tokens
+                              · <b style="color:#c8a96e">~${ec:.3f}</b><br>
+                              Queued: {entry['queued_at']}
+                              {"<br>Ingested: " + entry['ingested_at'] if entry['ingested_at'] else ""}
+                            </div>
+                          </div>
+                        </div>""",
+                        unsafe_allow_html=True
+                    )
+
+                    if is_pending:
+                        btn_col1, btn_col2, btn_col3 = st.columns([2, 2, 6])
+                        with btn_col1:
+                            if st.button("⚡ Ingest", key=f"ingest_{entry['id']}",
+                                         type="primary"):
+                                st.session_state[f'ingest_id'] = entry['id']
+                                st.session_state[f'ingest_source'] = entry['source_label']
+                        with btn_col2:
+                            if st.button("🗑 Remove", key=f"remove_{entry['id']}"):
+                                conn = sqlite3.connect(DB_NAME)
+                                conn.execute(
+                                    "DELETE FROM ingestion_queue WHERE id=?",
+                                    (entry['id'],)
+                                )
+                                conn.commit(); conn.close()
+                                logger.info("🗑 Queue entry %d removed", entry['id'])
+                                st.rerun()
+                        # Revisit button — navigate back to source corpus
+                        with btn_col3:
+                            if entry['source_label'] in [k for k in CORPORA
+                                                          if not k.startswith("__")]:
+                                if st.button(f"↩ Revisit {entry['source_label'][:30]}",
+                                             key=f"revisit_{entry['id']}"):
+                                    st.session_state['_page_override'] = 'Main Analysis'
+                                    st.session_state['_last_dropdown_choice'] = None
+                                    st.session_state['_revisit_corpus'] = entry['source_label']
+                                    st.rerun()
+
+            # Handle ingest actions (done outside card loop to avoid stale state)
+            _ingest_id = st.session_state.pop('ingest_id', None)
+            _ingest_source = st.session_state.pop('ingest_source', None)
+            _ingest_all = st.session_state.pop('ingest_all', False)
+
+            targets = []
+            if _ingest_id:
+                try:
+                    conn = sqlite3.connect(DB_NAME)
+                    row = conn.execute(
+                        "SELECT id,source_label,words_json FROM ingestion_queue WHERE id=?",
+                        (_ingest_id,)
+                    ).fetchone()
+                    conn.close()
+                    if row:
+                        targets = [(row[0], row[1], json.loads(row[2]))]
+                except Exception as exc:
+                    logger.error("Queue read error: %s", exc)
+            elif _ingest_all:
+                try:
+                    conn = sqlite3.connect(DB_NAME)
+                    rows = conn.execute(
+                        "SELECT id,source_label,words_json FROM ingestion_queue "
+                        "WHERE status='pending'"
+                    ).fetchall()
+                    conn.close()
+                    targets = [(r[0], r[1], json.loads(r[2])) for r in rows]
+                except Exception as exc:
+                    logger.error("Queue read error: %s", exc)
+
+            if targets:
+                api_key = os.environ.get(LLM_KEY_ENV_VAR)
+                if not api_key:
+                    st.error(f"❌ {LLM_KEY_ENV_VAR} not set — cannot ingest.")
+                else:
+                    total_ingested = 0
+                    prog = st.progress(0, text="Starting ingestion...")
+
+                    def _prog_cb(current, total_chunks, label):
+                        prog.progress(
+                            min(current / max(total_chunks, 1), 0.99),
+                            text=f"Ingesting {label}…"
+                        )
+
+                    for idx, (qid, src_label, words) in enumerate(targets):
+                        ingested_this = ingest_words(
+                            words=words,
+                            source_label=src_label,
+                            db_name=DB_NAME,
+                            api_key=api_key,
+                            base_url=LLM_BASE_URL,
+                            progress_cb=_prog_cb,
+                        )
+                        # Mark as ingested — audit trail preserved
+                        from datetime import datetime as _dti
+                        conn = sqlite3.connect(DB_NAME)
+                        conn.execute(
+                            "UPDATE ingestion_queue SET status='ingested', "
+                            "ingested_at=?, notes=? WHERE id=?",
+                            (_dti.now().strftime("%Y-%m-%d %H:%M:%S"),
+                             f"{ingested_this} words ingested", qid)
+                        )
+                        conn.commit(); conn.close()
+                        total_ingested += ingested_this
+                        logger.info("✅ Queue entry %d: %d words ingested from '%s'",
+                                    qid, ingested_this, src_label)
+
+                    prog.progress(1.0, text="Done!")
+                    st.success(
+                        f"✅ Ingested **{total_ingested} words** across "
+                        f"{len(targets)} bucket(s). "
+                        f"Reload the analysis to see updated coverage."
+                    )
+                    st.rerun()
+
 elif page == "Home":
     from home import render_home
     render_home()
-
-    

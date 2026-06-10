@@ -11,6 +11,7 @@ Changes over v3.3:
 
 import sqlite3, json, os, sys, numpy as np, requests, logging
 from typing import Dict, List, Tuple, Optional
+from ingestion_engine import fetch_vectors as _fetch_vectors, CHUNK_SIZE
 
 # --- 1. RUNTIME CONTROLS ---
 DRY_RUN = True   # ← set False to write to disk
@@ -170,50 +171,17 @@ def resolve_anchor_weights(token: str, purged_words: set) -> Optional[np.ndarray
 # --- 6. GPT CALL ---
 def fetch_empirical_vectors(domain: str, terms: List[str]) -> Dict[str, list]:
     """
-    Call LLM for a list of terms. Model, temperature, role, and prompt template
-    all read from prompts.json — edit there, not here.
+    Thin wrapper around ingestion_engine.fetch_vectors.
+    Kept for backwards compatibility with the rest of agent_expand.py's pipeline.
+    All LLM calling logic now lives in ingestion_engine.py.
     """
-    cfg = INGESTION_PROMPT
-    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-
-    context_line = (
-        "Evaluate each term as a standalone philosophical concept."
-        if domain.startswith("Tranche_")
-        else f"Evaluate these terms in the context of: {domain}."
+    return _fetch_vectors(
+        terms=terms,
+        source_label=domain,
+        api_key=API_KEY,
+        base_url=LLM_BASE_URL,
+        timeout=LLM_TIMEOUT,
     )
-
-    prompt = (cfg["prompt_template"]
-              .replace("{context_line}", context_line)
-              .replace("{terms}", ", ".join(terms))
-              .replace("{n_terms}", str(len(terms))))
-
-    payload = {
-        "model": cfg["model"],
-        "temperature": cfg["temperature"],
-        "messages": [
-            {"role": "system", "content": cfg["system_role"]},
-            {"role": "user",   "content": prompt},
-        ],
-    }
-    if cfg.get("response_format"):
-        payload["response_format"] = cfg["response_format"]
-
-    try:
-        r = requests.post(f"{LLM_BASE_URL}/chat/completions",
-                          headers=headers, json=payload, timeout=LLM_TIMEOUT)
-        r.raise_for_status()
-        raw = json.loads(r.json()['choices'][0]['message']['content'])
-        validated = {}
-        for k, v in raw.items():
-            if isinstance(v, list) and len(v) == 8 and all(isinstance(x, (int, float)) for x in v):
-                validated[k.lower().strip()] = v
-            else:
-                logger.warning("⚠️  Bad vector for '%s': %s — skipped", k, v)
-        logger.info("✅ LLM returned %d/%d valid vectors for [%s]", len(validated), len(terms), domain[:40])
-        return validated
-    except Exception as e:
-        logger.error("❌ LLM call failed for '%s': %s", domain, e)
-        return {}
 
 
 # --- 7. HYBRID MERGE ---
