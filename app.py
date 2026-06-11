@@ -962,7 +962,7 @@ elif page == "Sanskrit Non-Translatables":
             logger.info("🔬 Viewing non-translatable: %s | vector: %s",
                         selected_term, {k: round(v,3) for k,v in v_dict.items()})
 
-            fig = make_radar_figure(DIMS, v_dict, title=selected_term, height=480)
+            fig = _make_radar(DIMS, v_dict, title=selected_term, height=480)
             st.plotly_chart(fig)
 
             st.markdown("#### 📐 Dimensional Breakdown")
