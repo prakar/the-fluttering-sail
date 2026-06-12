@@ -14,7 +14,7 @@ from typing import Dict, List, Tuple, Optional
 from ingestion_engine import fetch_vectors as _fetch_vectors, CHUNK_SIZE
 
 # --- 1. RUNTIME CONTROLS ---
-DRY_RUN = True   # ← set False to write to disk
+DRY_RUN = False   # ← set False to write to disk
 
 DB_NAME        = "epistemic_lexicon.db"
 WEIGHTS_FILE   = "weights.json"

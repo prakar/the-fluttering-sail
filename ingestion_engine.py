@@ -286,8 +286,12 @@ def ingest_words(
         try:
             conn = sqlite3.connect(db_name)
             for word, vec in vectors.items():
+                # INSERT OR IGNORE: never overwrite an existing entry's source label.
+                # The MANIFEST (agent_expand.py) uses INSERT OR REPLACE and runs first
+                # to establish authoritative provenance. Queue-based ingestion only
+                # adds genuinely new vocabulary — it does not re-label existing terms.
                 conn.execute(
-                    "INSERT OR REPLACE INTO lexicon "
+                    "INSERT OR IGNORE INTO lexicon "
                     "(word, u, f, p, m, t, s, d, c, source) "
                     "VALUES (?,?,?,?,?,?,?,?,?,?)",
                     [word] + vec + [source_label]

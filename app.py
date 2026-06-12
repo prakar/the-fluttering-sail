@@ -342,17 +342,22 @@ def load_linked_corpora() -> dict:
 # Load externalised prompts — filter _note_ annotation keys (documentation only, not active config)
 _PROMPTS_FILE = "prompts.json"
 _SYNTHESIS_PROMPT: dict = {}
+_SANSKRIT_ESSENCE_PROMPT: dict = {}
 if os.path.exists(_PROMPTS_FILE):
     with open(_PROMPTS_FILE) as _f:
-        _raw_synthesis = json.load(_f).get("synthesis", {})
+        _raw_prompts = json.load(_f)
     _SYNTHESIS_PROMPT = {
-        k: v for k, v in _raw_synthesis.items()
+        k: v for k, v in _raw_prompts.get("synthesis", {}).items()
         if not k.startswith("_note_") and k != "meta"
     }
-    logger.info("✅ Prompts loaded from %s (synthesis model=%s, temp=%s)",
+    _SANSKRIT_ESSENCE_PROMPT = {
+        k: v for k, v in _raw_prompts.get("sanskrit_essence", {}).items()
+        if not k.startswith("_note_") and k != "meta"
+    }
+    logger.info("✅ Prompts loaded from %s (synthesis model=%s | sanskrit_essence model=%s)",
                 _PROMPTS_FILE,
                 _SYNTHESIS_PROMPT.get("model", "?"),
-                _SYNTHESIS_PROMPT.get("temperature", "?"))
+                _SANSKRIT_ESSENCE_PROMPT.get("model", "—not configured—"))
 else:
     logger.warning("⚠️  %s not found — synthesis will use hardcoded fallback", _PROMPTS_FILE)
 
@@ -398,18 +403,20 @@ def get_cached_synthesis(text_content, vector_dict):
     return (res[0] if res else None), text_hash
 
 
-def generate_triangulated_meaning(vector_dict: dict, source_context: str) -> str:
+def generate_triangulated_meaning(vector_dict: dict, source_context: str,
+                                  prompt_cfg: dict | None = None) -> str:
     """
     Generate philosophical narration via LLM.
+    prompt_cfg defaults to _SYNTHESIS_PROMPT (text passage narration).
+    Pass _SANSKRIT_ESSENCE_PROMPT for single-term Sanskrit essence descriptions.
     Provider, endpoint, and API key name all read from llm_config.json.
-    Falls back to the LLM API key env var + default endpoint if llm_config.json is missing.
     """
     api_key = os.environ.get(LLM_KEY_ENV_VAR)
     if not api_key:
         logger.warning("generate_triangulated_meaning: %s not set", LLM_KEY_ENV_VAR)
         return f"⚠️ API Key Missing. Set {LLM_KEY_ENV_VAR} in your environment."
 
-    cfg         = _SYNTHESIS_PROMPT
+    cfg         = prompt_cfg if prompt_cfg else _SYNTHESIS_PROMPT
     model       = cfg.get("model", "gpt-4o")
     temperature = cfg.get("temperature", 0.4)
     system_role = cfg.get("system_role", "You are a master of comparative philosophy.")
@@ -419,8 +426,12 @@ def generate_triangulated_meaning(vector_dict: dict, source_context: str) -> str
         "Explain its internal friction using the philosophical schools represented in the topology. "
         "DO NOT list weights or dimensions by name. Focus on the conceptual synthesis.")
 
+    # vector_dict may be a pre-formatted string (Sanskrit page passes vertical key:value)
+    # or a dict (main analysis page passes avg_dict). Handle both.
+    vec_str = vector_dict if isinstance(vector_dict, str) else str(vector_dict)
+
     prompt = (template
-              .replace("{vector_dict}", str(vector_dict))
+              .replace("{vector_dict}", vec_str)
               .replace("{source_context}", source_context[:1000]))
 
     logger.info("🤖 Synthesis — provider=%s model=%s temp=%s",
@@ -984,7 +995,26 @@ elif page == "Sanskrit Non-Translatables":
                 st.info(res)
             else:
                 with st.spinner("⏳ Triangulating term..."):
-                    new_res = generate_triangulated_meaning(v_dict, selected_term)
+                    # Format vector as vertical key: +value string for sanskrit_essence prompt
+                    dim_labels = {
+                        'u': 'Utility/Consequentialism',
+                        'f': 'Fairness/Justice',
+                        'p': 'Power/Realism',
+                        'm': 'Mimetic/Social',
+                        't': 'Telos/Purpose',
+                        's': 'Structure/Duty',
+                        'd': 'Dharma/Cosmic Order',
+                        'c': 'Non-Dual Consciousness',
+                    }
+                    vec_formatted = "\n".join(
+                        f"  {dim_labels.get(k, k)}: {v:+.2f}"
+                        for k, v in v_dict.items()
+                    )
+                    # Use sanskrit_essence prompt if configured, else fall back to synthesis
+                    essence_cfg = _SANSKRIT_ESSENCE_PROMPT if _SANSKRIT_ESSENCE_PROMPT else None
+                    new_res = generate_triangulated_meaning(
+                        vec_formatted, selected_term, prompt_cfg=essence_cfg
+                    )
                     conn = sqlite3.connect(DB_NAME)
                     conn.execute("INSERT OR REPLACE INTO synthesis_cache VALUES (?,?)", (h, new_res))
                     conn.commit(); conn.close()
