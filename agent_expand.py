@@ -14,7 +14,7 @@ from typing import Dict, List, Tuple, Optional
 from ingestion_engine import fetch_vectors as _fetch_vectors, CHUNK_SIZE
 
 # --- 1. RUNTIME CONTROLS ---
-DRY_RUN = False   # ← set False to write to disk
+DRY_RUN = True   # ← set False to write to disk
 
 DB_NAME        = "epistemic_lexicon.db"
 WEIGHTS_FILE   = "weights.json"
@@ -208,24 +208,72 @@ def execute_hybrid_merge(empirical_data: Dict[str, list], purged_words: set) -> 
 
 
 # --- 8. PERSISTENCE ---
-def save_to_lexicon(conn: sqlite3.Connection, data: Dict[str, list], source: str):
+PROTECTED_SOURCES = {
+    "Rajiv_Malhotra_Non_Translatables",
+    "Initial Seed Core",
+}
+# Words whose source labels must never be overwritten by text-corpus or tranche ingestion.
+# These represent curated philosophical provenance, not text-derived vocabulary.
+
+
+def save_to_lexicon(conn: sqlite3.Connection, data: Dict[str, list], source: str,
+                    authoritative: bool = False):
+    """
+    Persist vectors to the lexicon.
+
+    authoritative=True  → INSERT OR REPLACE (used only for SEEDS / Primal Anchors
+                          and for the Malhotra MANIFEST entry which establishes
+                          canonical source provenance).
+    authoritative=False → INSERT OR IGNORE (used for all text-corpus MANIFEST entries
+                          and all THEMATIC TRANCHES — never overwrites existing entries
+                          regardless of their current source label).
+
+    This prevents text-corpus ingestion (e.g. Nasadiya Sukta, Vivekachudamani) from
+    overwriting source labels that were deliberately set by the Malhotra ingestion run
+    or by manual relabelling. The schema has one source column per word (Option B —
+    a full junction table — is noted as future work); this guard is Option C: the
+    simplest safe behaviour given the current schema.
+    """
     conn.execute("""
         CREATE TABLE IF NOT EXISTS lexicon
         (word TEXT PRIMARY KEY, u REAL, f REAL, p REAL, m REAL,
          t REAL, s REAL, d REAL, c REAL, source TEXT)
     """)
-    saved = 0
+    saved = skipped_protected = 0
     for token, vec in data.items():
         if vec is None or len(vec) != 8:
             logger.error("❌ Bad vector for '%s' — skipped", token)
             continue
-        conn.execute(
-            "INSERT OR REPLACE INTO lexicon (word, u, f, p, m, t, s, d, c, source) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            [token] + vec + [source]
-        )
+
+        if not authoritative:
+            # Check if this word already exists under a protected source
+            existing = conn.execute(
+                "SELECT source FROM lexicon WHERE word=?", (token,)
+            ).fetchone()
+            if existing and existing[0] in PROTECTED_SOURCES:
+                skipped_protected += 1
+                logger.debug("🔒 Protected source preserved for '%s' (source=%s)",
+                             token, existing[0])
+                continue
+            conn.execute(
+                "INSERT OR IGNORE INTO lexicon "
+                "(word, u, f, p, m, t, s, d, c, source) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [token] + vec + [source]
+            )
+        else:
+            conn.execute(
+                "INSERT OR REPLACE INTO lexicon "
+                "(word, u, f, p, m, t, s, d, c, source) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [token] + vec + [source]
+            )
         saved += 1
+
     conn.commit()
-    logger.info("💾 Saved %d entries (source=%s)", saved, source)
+    if skipped_protected:
+        logger.info("💾 Saved %d entries (source=%s) | 🔒 %d protected entries preserved",
+                    saved, source, skipped_protected)
+    else:
+        logger.info("💾 Saved %d entries (source=%s)", saved, source)
 
 
 def print_preview(conn: sqlite3.Connection, limit: int = 20):
@@ -278,8 +326,15 @@ if __name__ == "__main__":
             if raw:
                 all_merged.update(execute_hybrid_merge(raw, purged))
         if all_merged:
-            save_to_lexicon(working_conn, all_merged, author)
-            logger.info("✅ %s — %d entries saved", author, len(all_merged))
+            # Malhotra and Seed entries are authoritative — they establish canonical
+            # provenance and may overwrite stale labels from earlier runs.
+            # All other MANIFEST entries (text corpora) are additive — they must not
+            # overwrite protected source labels.
+            is_authoritative = author in PROTECTED_SOURCES
+            save_to_lexicon(working_conn, all_merged, author,
+                            authoritative=is_authoritative)
+            logger.info("✅ %s — %d entries saved (authoritative=%s)",
+                        author, len(all_merged), is_authoritative)
 
     # Step 3: Process THEMATIC TRANCHES (lexicon expansion)
     logger.info("\n━━━ PHASE 2: THEMATIC TRANCHES (500-token expansion) ━━━")
@@ -311,7 +366,9 @@ if __name__ == "__main__":
                 all_merged.update(execute_hybrid_merge(raw, purged))
 
         if all_merged:
-            save_to_lexicon(working_conn, all_merged, tranche_name)
+            # Thematic tranches are vocabulary expansion — never authoritative.
+            # INSERT OR IGNORE protects all existing entries including protected sources.
+            save_to_lexicon(working_conn, all_merged, tranche_name, authoritative=False)
             logger.info("✅ %s — %d entries saved", tranche_name, len(all_merged))
 
     # Preview

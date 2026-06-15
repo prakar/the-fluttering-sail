@@ -458,20 +458,21 @@ def generate_triangulated_meaning(vector_dict: dict, source_context: str,
         return f"⚠️ Error: {str(e)}"
 
 
-def load_all_nontranslatables():
+def load_all_sanskrit_concepts():
     """
-    Load ALL Sanskrit non-translatables from the DB (source = Rajiv_Malhotra_Non_Translatables).
+    Load ALL Sanskrit ontology-dependent philosophical concepts from the DB
+    (source = Sanskrit_Ontology_Dependent).
     Returns dict {word: {u,f,p,m,t,s,d,c}} — the single source of truth.
-    DB has 63 terms; weights.json (14 terms) is a subset and is now a fallback only.
+    weights.json is a subset and is now a fallback only.
     """
     conn = sqlite3.connect(DB_NAME)
     rows = conn.execute(
         "SELECT word, u, f, p, m, t, s, d, c FROM lexicon "
-        "WHERE source = 'Rajiv_Malhotra_Non_Translatables' ORDER BY word"
+        "WHERE source = 'Sanskrit_Ontology_Dependent' ORDER BY word"
     ).fetchall()
     conn.close()
     terms = {r[0]: dict(zip(DIMS, r[1:])) for r in rows}
-    logger.info("📚 Loaded %d Sanskrit non-translatables from DB", len(terms))
+    logger.info("📚 Loaded %d Sanskrit ontology-dependent concepts from DB", len(terms))
     if not terms:
         # Fallback to weights.json
         logger.warning("DB had no nontranslatables — falling back to weights.json")
@@ -502,7 +503,7 @@ if st.session_state['onboarded'] == 'tour':
 
 # ── MAIN APP (onboarded == 'direct') ─────────────────────────────────────────
 
-page_options = ["Main Analysis", "Sanskrit Non-Translatables", "Admin & Logs", "Home"]
+page_options = ["Main Analysis", "Sanskrit Concepts", "Admin & Logs", "Home"]
 _override = st.session_state.pop('_page_override', None)
 _default_idx = page_options.index(_override) if _override in page_options else 0
 page = st.sidebar.selectbox("Navigation", page_options, index=_default_idx)
@@ -934,10 +935,10 @@ Use this for high-priority terms where you want precise philosophical control.
 # ===========================================================================
 # PAGE: SANSKRIT NON-TRANSLATABLES
 # ===========================================================================
-elif page == "Sanskrit Non-Translatables":
-    st.title("📜 Sanskrit Non-Translatables")
+elif page == "Sanskrit Concepts":
+    st.title("📜 Sanskrit Ontology-Dependent Concepts")
 
-    all_terms = load_all_nontranslatables()   # dict {word: vector_dict}
+    all_terms = load_all_sanskrit_concepts()   # dict {word: vector_dict}
     term_names = sorted(all_terms.keys())
     total = len(term_names)
     PAGE_SIZE = 10
@@ -970,7 +971,7 @@ elif page == "Sanskrit Non-Translatables":
     with c_main:
         if selected_term:
             v_dict = all_terms[selected_term]
-            logger.info("🔬 Viewing non-translatable: %s | vector: %s",
+            logger.info("🔬 Viewing Sanskrit concept: %s | vector: %s",
                         selected_term, {k: round(v,3) for k,v in v_dict.items()})
 
             fig = _make_radar(DIMS, v_dict, title=selected_term, height=480)

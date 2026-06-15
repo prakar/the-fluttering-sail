@@ -227,10 +227,10 @@ one tradition glossing the other.
           <div style="font-size:12px;color:#c8a96e;font-weight:600;
                margin-bottom:4px">On the Sanskrit lexicon</div>
           <div style="font-size:13px;color:#8899bb;line-height:1.6">
-            63 Sanskrit philosophical non-translatables — dharma, moksha, viveka,
-            ahankara and more — are positioned as vectors in this same space.
-            Not translated. <em>Quantised.</em> Explore them in the
-            Sanskrit Non-Translatables page.
+            A curated lexicon of Sanskrit ontology-dependent philosophical concepts —
+            dharma, moksha, viveka, ahankara and more — are positioned as vectors in
+            this same space. Not translated. <em>Quantised.</em> Explore them in the
+            Sanskrit Concepts page.
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -302,9 +302,9 @@ one tradition glossing the other.
              "whether you're writing for mobilisation, balance, or transcendence "
              "— and whether that's intentional."),
             ("🕉️", "Sanskrit and Indic philosophy scholars",
-             "The first computational lexicon of Sanskrit non-translatables "
-             "as philosophical vectors. Explore dharma, moksha, viveka, and "
-             "60 more terms in the dedicated Sanskrit view."),
+             "A curated lexicon of Sanskrit ontology-dependent philosophical concepts "
+             "as philosophical vectors — dharma, moksha, viveka, and more, "
+             "each positioned in ℝ⁸. Explore the dedicated Sanskrit Concepts view."),
             ("🔬", "Ethics and AI researchers",
              "A forkable, open-source framework for cross-civilisational "
              "computational ethics. Extend the dimensions, add traditions, "
