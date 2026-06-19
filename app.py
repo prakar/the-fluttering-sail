@@ -1,8 +1,8 @@
 """
 app.py — The Fluttering Sail
 =============================
-A multi-polar, quantised, dynamical framework for culture-agnostic
-ethical evaluation and real-time synthesis.
+A hermeneutic framework for projecting text into a curated
+8-dimensional philosophical coordinate space, with real-time synthesis.
 
 Architecture
 ------------
@@ -26,9 +26,7 @@ Live app  : https://the-fluttering-sail.onrender.com
 Repository: https://github.com/prakar/the-fluttering-sail
 
 Companion paper
-  "A New Moral Compass: An Extensible, Quantised, Dynamical,
-   Multi-Polar Framework for Culture-Agnostic Ethical Evaluation
-   and Real-Time Synthesis"
+  "An 8-Dimensional Quantised Hermeneutic Ethics Framework"
   Submitted to: Ethics and Information Technology (Springer)
 
 Dependencies: see requirements.txt
@@ -680,7 +678,7 @@ if page == "Main Analysis":
                     if st.button("🔓 De-Merge Lenses", width="stretch"):
                         st.session_state.synth_active = False
                         st.rerun()
-                st.markdown("### 🌪️ Synthesized Topological Meaning")
+                st.markdown("### 🌪️ Hermeneutic Synthesis")
                 res, h = get_cached_synthesis(input_text, avg_dict)
                 if res:
                     st.info(res)
@@ -786,7 +784,7 @@ if page == "Main Analysis":
                         &nbsp;<span style="color:#666;font-size:11px">(μ={mu_val:.3f})</span><br>
                         <span style="color:#aaa">This text's vocabulary approaches or transcends the framework's
                         dimensional poles — a signature of radical renunciation, metaphysical abstraction,
-                        or highly contextual language that points <em>beyond</em> the measurement space
+                        or highly contextual language that points <em>beyond</em> the interpretive space
                         rather than filling it. The directional pattern across dimensions is still
                         meaningful; the absolute magnitudes are not the signal here.</span>
                     </div>""",

@@ -62,7 +62,7 @@ def render_splash() -> None:
       <div style="
           font-size:11px;font-weight:700;letter-spacing:0.22em;
           text-transform:uppercase;color:#4a90d9;margin-bottom:16px">
-        Computational Ethics Framework
+        Quantised Hermeneutic Ethics Framework
       </div>
 
       <!-- Name -->
@@ -78,8 +78,8 @@ def render_splash() -> None:
           font-size:clamp(13px,1.8vw,17px);color:#7ab3e0;
           font-style:italic;margin-bottom:20px;max-width:600px;
           margin-left:auto;margin-right:auto">
-        An 8-Dimensional Quantised Ethics Framework bridging<br>
-        Western Materialist and Indic Essentialist philosophical traditions
+        An 8-Dimensional Quantised Hermeneutic Ethics Framework<br>
+        for Western Materialist and Indic Essentialist philosophical traditions
       </div>
 
       <!-- One-sentence hook -->
@@ -87,7 +87,7 @@ def render_splash() -> None:
           font-size:clamp(14px,1.6vw,16px);color:#aac;line-height:1.7;
           max-width:480px;margin:0 auto 36px auto">
         Paste any text — a speech, a mission statement, a policy document —
-        and see its ethical fingerprint mapped across eight philosophical traditions in real time.
+        and see its philosophical signature mapped across eight philosophical traditions in real time.
       </div>
 
     </div>
@@ -190,9 +190,9 @@ cannot hold two civilisational perspectives simultaneously. A text can be maxima
 fair by Rawlsian standards and ontologically incoherent by Dharmic ones, with no tool
 to show both at once.
 
-This framework treats ethical evaluation as a **geometric problem**: a moral position
-is a vector in ℝ⁸. The eight dimensions span both traditions as co-equal axes — not
-one tradition glossing the other.
+This framework treats interpretation as a **geometric act**: a philosophical reading
+is a vector in ℝ⁸. The eight dimensions span both traditions as co-equal interpretive
+lenses — not one tradition glossing the other.
 
 **The eight dimensions:**
         """)
@@ -254,7 +254,7 @@ one tradition glossing the other.
              "what it actively opposes."),
             ("🌪️", "Synthesize the lenses",
              "Click Synthesize to overlay both radars into one view and generate a philosophical "
-             "narration — a single dense paragraph describing the text's ethical fingerprint."),
+             "narration — a single dense paragraph describing the text's philosophical signature."),
             ("🔬", "Read the proximity meters",
              "Five VU-style bars show how close the text is to each named ethical condition — "
              "Baconian Collapse, Mimetic Shear, Ascetic Drift, Purushartha Equilibrium, and "
@@ -306,8 +306,8 @@ one tradition glossing the other.
              "as philosophical vectors — dharma, moksha, viveka, and more, "
              "each positioned in ℝ⁸. Explore the dedicated Sanskrit Concepts view."),
             ("🔬", "Ethics and AI researchers",
-             "A forkable, open-source framework for cross-civilisational "
-             "computational ethics. Extend the dimensions, add traditions, "
+             "A forkable, open-source framework for computational "
+             "hermeneutics. Extend the dimensions, add traditions, "
              "publish variant lexicons as citable forks."),
             ("🌐", "Anyone",
              "Paste anything. A tweet, a manifesto, a company mission statement. "
@@ -342,8 +342,8 @@ one tradition glossing the other.
     st.markdown("""
     <div style="text-align:center;margin-top:24px;font-size:11px;color:#444;
          padding-bottom:40px">
-      Karmarkar, P.V. (2026). An 8-Dimensional Quantised Computational Ethics Framework
-      Bridging Western Materialist and Indic Essentialist Philosophical Traditions.
+      Karmarkar, P.V. (2026). An 8-Dimensional Quantised Hermeneutic Ethics Framework
+      for Western Materialist and Indic Essentialist Philosophical Traditions.
       <em>Ethics and Information Technology</em> (Springer, under review).
     </div>
     """, unsafe_allow_html=True)
