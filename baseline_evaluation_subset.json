@@ -1,0 +1,32 @@
+{
+  "_note": "Dimension order is [u, f, p, m, t, s, d, c]. u,f,p,m = Materialist manifold; t,s,d,c = Dharmic-Essentialist manifold. Anchor vectors are taken verbatim from Appendix A.0 of the manuscript (The Primal Anchor Seed Vault). These are normative assertions by the framework authors, not empirical measurements.",
+  "anchors": {
+    "action":      [0.60,  0.50,  0.50,  0.40,  0.60,  0.60,  0.85,  0.50],
+    "structure":   [0.50,  0.70,  0.40,  0.30,  0.50,  0.90,  0.40,  0.30],
+    "liberation":  [-0.20, 0.00, -0.30, -0.80,  0.60,  0.20,  0.20,  0.90],
+    "justice":     [0.60,  0.90,  0.30,  0.20,  0.50,  0.70,  0.60,  0.40],
+    "utility":     [0.90,  0.50,  0.40,  0.30,  0.40,  0.30,  0.20,  0.10],
+    "power":       [0.40,  0.20,  0.90,  0.60,  0.40,  0.30,  0.10, -0.20],
+    "chaos":       [-0.50, -0.70,  0.30,  0.60, -0.60, -0.90, -0.80, -0.40],
+    "oppression":  [-0.80, -0.90,  0.60,  0.50, -0.70, -0.60, -0.80, -0.60],
+    "suffering":   [-0.90, -0.80, -0.20,  0.40, -0.70, -0.50, -0.70, -0.50],
+    "unity":       [0.40,  0.60,  0.20,  0.30,  0.60,  0.50,  0.80,  0.90],
+    "separation":  [0.20, -0.30,  0.40,  0.70, -0.30,  0.10, -0.60, -0.90],
+    "purpose":     [0.40,  0.40,  0.30,  0.20,  0.90,  0.60,  0.70,  0.50],
+    "duty":        [0.30,  0.60,  0.20,  0.20,  0.70,  0.90,  0.80,  0.50],
+    "desire":      [0.60,  0.10,  0.50,  0.80,  0.30, -0.40, -0.30, -0.70],
+    "rivalry":     [0.20, -0.40,  0.70,  0.90, -0.20, -0.30, -0.50, -0.60],
+    "harmony":     [0.50,  0.70,  0.20,  0.30,  0.60,  0.60,  0.80,  0.70],
+    "extraction":  [0.80, -0.30,  0.60,  0.40, -0.40, -0.20, -0.60, -0.50],
+    "awareness":   [0.30,  0.40,  0.10,  0.10,  0.60,  0.40,  0.60,  0.80],
+    "order":       [0.40,  0.70,  0.40,  0.20,  0.60,  0.80,  0.90,  0.50],
+    "dissolution": [-0.30, -0.10, -0.40, -0.50,  0.40,  0.10,  0.30,  0.90]
+  },
+  "_anchors_note": "All 20 Primal Anchors from Appendix A.0 are included above (full set, not a subset).",
+  "controls": {
+    "_note": "Un-anchored control words drawn from the master lexicon tranches. These tokens have no Primal Anchor entry and receive LLM-inferred vectors only, optionally blended via Hybrid Merge if a future anchor is added.",
+    "tranche_1_operational": ["governance", "accountability"],
+    "tranche_2_legal": ["rights", "equality"],
+    "tranche_6_political": ["sovereignty", "propaganda"]
+  }
+}

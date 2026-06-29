@@ -20,7 +20,7 @@
     "model": "gpt-4o",
     "_note_model": "Accepts any OpenAI-compatible model string. Swap to 'gpt-4o-mini' to reduce cost, 'o1' for deeper reasoning, or any model served via an OpenAI-compatible endpoint (e.g. local Ollama). Note: response_format json_object is not supported by all models — if switching, verify support or set response_format to null.",
 
-    "temperature": 0.25,
+    "temperature": 0.2,
     "_note_temperature": "0.25 is deliberately conservative — low variance keeps vectors stable and reproducible across runs, which matters for the paper's reproducibility claim. Raise to 0.4-0.6 if you want more varied/exploratory vectors during development. Do NOT exceed 0.7 — above that the LLM tends to generate implausible philosophical assignments.",
 
     "response_format": {"type": "json_object"},

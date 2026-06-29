@@ -1,0 +1,13 @@
+{
+  "_note": "Pilot-run vocabulary for the stability script (Mini-Submission 1). This is NOT the anchor vault — it is a small, run-specific evaluation list and is expected to change between pilot runs. The anchor vault (Primal Anchors) lives in baseline_evaluation_subset.json and is versioned with the manuscript.",
+  "unanchored_controls": {
+    "_note": "Un-anchored control tokens, drawn from the master lexicon tranches. These have no Primal Anchor entry, so the LLM's raw output is reported directly (alpha = 0.0 condition).",
+    "tranche_1_operational": ["governance", "accountability"],
+    "tranche_2_legal": ["rights", "equality"],
+    "tranche_6_political": ["sovereignty", "propaganda"]
+  },
+  "anchored_tokens": {
+    "_note": "Subset of Primal Anchors (must exist as keys in baseline_evaluation_subset.json's 'anchors' block) used to test Hybrid Merge blend stability under repeated LLM calls (alpha = 0.6 condition).",
+    "tokens": ["action", "structure", "justice", "power"]
+  }
+}
